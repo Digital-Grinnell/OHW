@@ -1446,10 +1446,10 @@ def main(page: ft.Page):
         page.update()
         
         try:
-            # Scan input directory for audio files
+            # Scan input directory for audio files — case-insensitive on any filesystem
             input_files = {}
-            for ext in ['*.wav', '*.mp3']:
-                for file_path in current_directory.rglob(ext):
+            for file_path in current_directory.rglob("*"):
+                if file_path.is_file() and file_path.suffix.lower() in (".wav", ".mp3"):
                     stem = file_path.stem
                     if stem not in input_files:
                         input_files[stem] = {'input_path': file_path, 'format': file_path.suffix.lower()}
