@@ -7,7 +7,10 @@ for Digital.Grinnell, including WAV-to-MP3 conversion and future processing step
 import flet as ft
 import os
 import logging
+import csv
 import json
+import platform
+import socket
 import subprocess
 import shutil
 import warnings
@@ -344,10 +347,11 @@ def main(page: ft.Page):
             return
 
         try:
-            # Find all WAV and MP3 files recursively in subdirectories
-            audio_files = []
-            for ext in ["**/*.wav", "**/*.WAV", "**/*.mp3", "**/*.MP3"]:
-                audio_files.extend(current_directory.glob(ext))
+            # Find all WAV and MP3 files recursively, case-insensitive on any filesystem
+            audio_files = [
+                f for f in current_directory.rglob("*")
+                if f.is_file() and f.suffix.lower() in (".wav", ".mp3")
+            ]
             
             # Sort by relative path
             audio_files.sort(key=lambda p: str(p.relative_to(current_directory)).lower())
@@ -598,26 +602,37 @@ def main(page: ft.Page):
             add_log_message("Epoch timestamp missing. Reselect the file to regenerate it.")
             return
 
-        # Only transcribe MP3 files
-        if selected_file.suffix.lower() != ".mp3":
-            update_status(
-                f"Cannot transcribe {selected_file.suffix} file. Please select an MP3 file.",
-                is_error=True,
-            )
-            add_log_message(f"Skipped: {selected_file.name} is not an MP3 file")
-            return
-
-        # Check if MP3 exists in output directory (it should if converted)
+        # Resolve the MP3 to transcribe
         mp3_filename = f"dg_{current_epoch}.mp3"
         mp3_path = output_directory / mp3_filename
-        
-        # Use the MP3 from output directory if it exists, otherwise use selected file
-        if mp3_path.exists():
-            audio_to_transcribe = mp3_path
-            add_log_message(f"Using MP3 from output directory: {mp3_filename}")
+
+        if selected_file.suffix.lower() == ".wav":
+            # WAV selected — look for the converted MP3 in the output directory
+            if mp3_path.exists():
+                audio_to_transcribe = mp3_path
+                add_log_message(f"WAV selected; using converted MP3 from output directory: {mp3_filename}")
+            else:
+                update_status(
+                    f"⚠️  No converted MP3 found for {selected_file.name}. Run Function 1 first.",
+                    is_error=True,
+                )
+                add_log_message(f"Skipped: {mp3_filename} not found in {output_directory.name}. Run Function 1 to convert.")
+                return
+        elif selected_file.suffix.lower() == ".mp3":
+            # MP3 selected — prefer the output-directory copy, fall back to selected file
+            if mp3_path.exists():
+                audio_to_transcribe = mp3_path
+                add_log_message(f"Using MP3 from output directory: {mp3_filename}")
+            else:
+                audio_to_transcribe = selected_file
+                add_log_message(f"Using selected MP3 file: {selected_file.name}")
         else:
-            audio_to_transcribe = selected_file
-            add_log_message(f"Using selected MP3 file: {selected_file.name}")
+            update_status(
+                f"Cannot transcribe {selected_file.suffix} file. Please select a WAV or MP3 file.",
+                is_error=True,
+            )
+            add_log_message(f"Skipped: {selected_file.name} is not a WAV or MP3 file")
+            return
 
         # Define output filenames
         base_name = f"dg_{current_epoch}"
@@ -724,10 +739,23 @@ def main(page: ft.Page):
             add_log_message("Saving JSON transcript...")
             update_status("Saving transcript JSON...")
             page.update()
-            
+
+            notes = build_provenance_notes(
+                method="OpenAI Whisper (local)",
+                extra={
+                    "whisper_model": "base",
+                    "detected_language": detected_language,
+                    "device": device,
+                    "segment_count": len(final_segments),
+                    "speaker_mapping": build_speaker_mapping(get_speaker_names(), get_reviewed_by()),
+                    "source_audio": collect_audio_file_info(audio_to_transcribe, selected_file, output_directory),
+                },
+            )
+
             output_data = {
+                "notes": notes,
                 "language": detected_language,
-                "segments": final_segments
+                "segments": final_segments,
             }
             
             with open(json_path, "w", encoding="utf-8") as f:
@@ -825,7 +853,13 @@ def main(page: ft.Page):
             update_status("Converting DOCX to JSON...")
             add_log_message(f"📝 Converting {docx_path.name} to JSON...")
             
-            success, message = convert_docx_to_json(docx_path, json_path, speaker_names)
+            success, message = convert_docx_to_json(
+                docx_path, json_path, speaker_names,
+                reviewed_by_name=get_reviewed_by(),
+                source_audio=audio_to_transcribe,
+                selected_source=selected_file,
+                out_dir=output_directory,
+            )
             
             if success:
                 update_status(f"✓ {message}")
@@ -849,7 +883,7 @@ def main(page: ft.Page):
                         
                         ft.Divider(height=20),
                         
-                        ft.Text("Speaker Names (from UI)", size=16, weight=ft.FontWeight.BOLD),
+                        ft.Text("Individuals (from UI)", size=16, weight=ft.FontWeight.BOLD),
                         ft.Text("Copy these names when editing transcription in Word:", size=12, italic=True),
                         ft.Column([
                             copyable_field(f"Speaker {i+1}:", name) 
@@ -963,13 +997,18 @@ def main(page: ft.Page):
         add_log_message(f"📝 Displayed MS Word Online instructions for: {audio_to_transcribe.name}")
         update_status(f"Follow the instructions to transcribe with MS Word Online")
 
-    def convert_docx_to_json(docx_path, output_json_path, ui_speaker_names=None):
+    def convert_docx_to_json(docx_path, output_json_path, ui_speaker_names=None,
+                              reviewed_by_name="", source_audio=None, selected_source=None, out_dir=None):
         """Convert MS Word transcription DOCX to JSON format.
         
         Args:
             docx_path: Path to DOCX file
             output_json_path: Path for output JSON file
             ui_speaker_names: List of speaker names from UI (optional)
+            reviewed_by_name: Name of the person who reviewed/edited the transcript
+            source_audio: Path of the audio file actually used for transcription
+            selected_source: Path of the file the user originally selected
+            out_dir: Output directory (for WAV detection)
         """
         try:
             if not DOCX_AVAILABLE:
@@ -1064,10 +1103,26 @@ def main(page: ft.Page):
             for i in range(len(segments) - 1):
                 segments[i]["end"] = segments[i + 1]["start"]
             
-            # Create JSON in Whisper format
+            # Create JSON in Whisper-compatible format
+            notes = build_provenance_notes(
+                method="MS Word Online (manual transcription)",
+                extra={
+                    "ms_word_url": "https://www.office.com/launch/word",
+                    "docx_source": str(docx_path),
+                    "speaker_mapping": build_speaker_mapping(ui_speakers, reviewed_by_name),
+                    "segment_count": len(segments),
+                    "source_audio": (
+                        collect_audio_file_info(source_audio, selected_source, out_dir)
+                        if source_audio and selected_source
+                        else {"note": "source file info not available"}
+                    ),
+                },
+            )
+
             transcript_data = {
+                "notes": notes,
                 "language": "en",
-                "segments": segments
+                "segments": segments,
             }
             
             # Save JSON
@@ -1086,17 +1141,66 @@ def main(page: ft.Page):
                 raise ImportError("reportlab library is required. Install it with: pip install reportlab")
             
             # Derive MP3 filename from JSON path
-            # json_path is like: dg_1775499960_transcript.json
-            # mp3_filename should be: dg_1775499960.mp3
             json_filename = Path(json_path).name
             mp3_filename = json_filename.replace('_transcript.json', '.mp3')
-            
+
+            # Read narrative and speaker names from JSON notes (if present)
+            narrative_text = ""
+            speaker_names_for_title = []
+            try:
+                with open(json_path, "r", encoding="utf-8") as _f:
+                    _data = json.load(_f)
+                _notes = _data.get("notes", {})
+                narrative_text = _notes.get("narrative", "")
+                _sm = _notes.get("speaker_mapping", {})
+                speaker_names_for_title = [
+                    v for k, v in _sm.items()
+                    if k not in ("Reviewed By", "Interviewer") and v and v.strip()
+                ]
+            except Exception:
+                pass
+
+            # Build document title
+            if speaker_names_for_title:
+                doc_title = "Oral History Transcript: " + ", ".join(speaker_names_for_title)
+            else:
+                doc_title = "Oral History Transcript"
+
             # Create PDF document
-            doc = SimpleDocTemplate(str(pdf_path), pagesize=letter)
+            doc = SimpleDocTemplate(
+                str(pdf_path),
+                pagesize=letter,
+                title=doc_title,
+                author="OHW — Oral History Workflow",
+            )
             story = []
             styles = getSampleStyleSheet()
-            
+
             # Create custom styles
+            title_style = ParagraphStyle(
+                'DocTitle',
+                parent=styles['Normal'],
+                fontSize=16,
+                textColor='black',
+                spaceAfter=6,
+                spaceBefore=0,
+                alignment=TA_LEFT,
+                fontName='Helvetica-Bold',
+                leading=20,
+            )
+
+            narrative_style = ParagraphStyle(
+                'Narrative',
+                parent=styles['Normal'],
+                fontSize=10,
+                textColor='black',
+                spaceAfter=14,
+                spaceBefore=0,
+                alignment=TA_LEFT,
+                leading=14,
+                fontName='Helvetica-Oblique',
+            )
+
             heading_style = ParagraphStyle(
                 'Heading',
                 parent=styles['Normal'],
@@ -1133,6 +1237,16 @@ def main(page: ft.Page):
                 spaceAfter=12,
                 alignment=TA_LEFT,
             )
+
+            # Document title
+            story.append(Paragraph(doc_title, title_style))
+            story.append(Spacer(1, 0.15 * inch))
+
+            # Provenance narrative
+            if narrative_text:
+                story.append(Paragraph("Provenance", heading_style))
+                story.append(Paragraph(narrative_text, narrative_style))
+                story.append(Spacer(1, 0.15 * inch))
             
             # Add header section
             story.append(Paragraph("Audio file", heading_style))
@@ -1170,7 +1284,7 @@ def main(page: ft.Page):
             return False, f"PDF generation failed: {str(e)}"
 
     def on_function_4_generate_outputs(e):
-        """Generate TXT, VTT, and PDF outputs from edited JSON transcript."""
+        """Generate TXT, VTT, CSV, and PDF outputs from edited JSON transcript."""
         nonlocal selected_file, output_directory, current_epoch
         
         if not selected_file:
@@ -1193,6 +1307,7 @@ def main(page: ft.Page):
         json_path = output_directory / f"{base_name}_transcript.json"
         txt_path = output_directory / f"{base_name}.txt"
         vtt_path = output_directory / f"{base_name}.vtt"
+        csv_path = output_directory / f"{base_name}.csv"
         pdf_path = output_directory / f"{base_name}.pdf"
         
         # Check if JSON exists
@@ -1205,7 +1320,7 @@ def main(page: ft.Page):
             return
 
         storage.record_function_usage("function_4_generate_outputs")
-        update_status("Generating TXT, VTT, and PDF outputs from JSON...")
+        update_status("Generating TXT, VTT, CSV, and PDF outputs from JSON...")
         add_log_message(f"Reading transcript JSON: {json_path.name}")
         page.update()
 
@@ -1264,7 +1379,23 @@ def main(page: ft.Page):
                     f.write(f"<v {speaker}>{text}</v>\n\n")
             
             add_log_message(f"✅ Created: {vtt_path.name}")
-            
+
+            # Generate CSV output
+            add_log_message("Generating CSV output...")
+            with open(csv_path, "w", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                writer.writerow(["timestamp", "speaker", "words"])
+                for segment in segments:
+                    start_time = segment.get("start", 0)
+                    hours = int(start_time // 3600)
+                    minutes = int((start_time % 3600) // 60)
+                    seconds = int(start_time % 60)
+                    timestamp = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+                    speaker = segment.get("speaker", "UNKNOWN")
+                    words = segment.get("text", "").strip()
+                    writer.writerow([timestamp, speaker, words])
+            add_log_message(f"✅ Created: {csv_path.name}")
+
             # Generate PDF output
             add_log_message("Generating PDF output...")
             pdf_success, pdf_message = generate_pdf_from_json(json_path, pdf_path, segments)
@@ -1276,7 +1407,7 @@ def main(page: ft.Page):
             add_log_message(f"✅ Output generation complete! Language: {language}")
             add_log_message(f"✅ Output location: {output_directory}")
             
-            success_msg = f"✅ Generated TXT, VTT, and PDF outputs from edited JSON!"
+            success_msg = f"✅ Generated TXT, VTT, CSV, and PDF outputs from edited JSON!"
             update_status(success_msg)
             
         except json.JSONDecodeError as ex:
@@ -1343,6 +1474,7 @@ def main(page: ft.Page):
                                 'json': (dir_path / f"{dg_name}_transcript.json").exists(),
                                 'txt': (dir_path / f"{dg_name}.txt").exists(),
                                 'vtt': (dir_path / f"{dg_name}.vtt").exists(),
+                                'csv': (dir_path / f"{dg_name}.csv").exists(),
                                 'pdf': (dir_path / f"{dg_name}.pdf").exists(),
                             }
             
@@ -1351,15 +1483,16 @@ def main(page: ft.Page):
             total_processed = len(processed_files)
             
             complete_count = sum(1 for f in processed_files.values() 
-                               if f['mp3'] and f['json'] and f['txt'] and f['vtt'] and f['pdf'])
+                               if f['mp3'] and f['json'] and f['txt'] and f['vtt'] and f['csv'] and f['pdf'])
             in_progress_count = sum(1 for f in processed_files.values()
-                                  if not (f['mp3'] and f['json'] and f['txt'] and f['vtt'] and f['pdf'])
+                                  if not (f['mp3'] and f['json'] and f['txt'] and f['vtt'] and f['csv'] and f['pdf'])
                                   and (f['mp3'] or f['json'] or f['txt']))
             
             mp3_count = sum(1 for f in processed_files.values() if f['mp3'])
             json_count = sum(1 for f in processed_files.values() if f['json'])
             txt_count = sum(1 for f in processed_files.values() if f['txt'])
             vtt_count = sum(1 for f in processed_files.values() if f['vtt'])
+            csv_count = sum(1 for f in processed_files.values() if f['csv'])
             pdf_count = sum(1 for f in processed_files.values() if f['pdf'])
             
             # Generate report content
@@ -1380,11 +1513,11 @@ This report tracks the processing status of audio files from the input directory
 
 1. **Audio (WAV/MP3)** - Original or converted audio
 2. **Transcription (JSON)** - Transcript from Function 2 (Whisper or MS Word)
-3. **Outputs (TXT, VTT, PDF)** - Final deliverables from Function 4
+3. **Outputs (TXT, VTT, CSV, PDF)** - Final deliverables from Function 4
 
 ## Progress Legend
 
-- ✅ **Complete** - All stages finished (MP3, JSON, TXT, VTT, PDF)
+- ✅ **Complete** - All stages finished (MP3, JSON, TXT, VTT, CSV, PDF)
 - 🟡 **In Progress** - Some stages completed
 - ⏳ **Not Started** - Only source file exists in input directory
 
@@ -1408,6 +1541,7 @@ This report tracks the processing status of audio files from the input directory
 | JSON Transcripts | {json_count}/{total_processed if total_processed > 0 else 1} | {json_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 | TXT Outputs | {txt_count}/{total_processed if total_processed > 0 else 1} | {txt_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 | VTT Outputs | {vtt_count}/{total_processed if total_processed > 0 else 1} | {vtt_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
+| CSV Outputs | {csv_count}/{total_processed if total_processed > 0 else 1} | {csv_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 | PDF Outputs | {pdf_count}/{total_processed if total_processed > 0 else 1} | {pdf_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 
 ---
@@ -1418,18 +1552,18 @@ This report tracks the processing status of audio files from the input directory
             
             # Add complete files
             complete_files = [(name, info) for name, info in sorted(processed_files.items())
-                            if info['mp3'] and info['json'] and info['txt'] and info['vtt'] and info['pdf']]
+                            if info['mp3'] and info['json'] and info['txt'] and info['vtt'] and info['csv'] and info['pdf']]
             
             if complete_files:
                 report_content += f"### ✅ Complete ({len(complete_files)} files)\n\n"
                 for name, info in complete_files:
                     report_content += f"**{name}** (`{info['dg_name']}`)  \n"
-                    report_content += f"- ✅ MP3, JSON, TXT, VTT, PDF\n"
+                    report_content += f"- ✅ MP3, JSON, TXT, VTT, CSV, PDF\n"
                     report_content += f"- Location: `{info['directory'].name}`\n\n"
             
             # Add in-progress files
             in_progress_files = [(name, info) for name, info in sorted(processed_files.items())
-                               if not (info['mp3'] and info['json'] and info['txt'] and info['vtt'] and info['pdf'])
+                               if not (info['mp3'] and info['json'] and info['txt'] and info['vtt'] and info['csv'] and info['pdf'])
                                and (info['mp3'] or info['json'] or info['txt'])]
             
             if in_progress_files:
@@ -1440,6 +1574,7 @@ This report tracks the processing status of audio files from the input directory
                     if not info['json']: missing.append('JSON')
                     if not info['txt']: missing.append('TXT')
                     if not info['vtt']: missing.append('VTT')
+                    if not info['csv']: missing.append('CSV')
                     if not info['pdf']: missing.append('PDF')
                     
                     report_content += f"**{name}** (`{info['dg_name']}`)  \n"
@@ -1467,7 +1602,7 @@ For each audio file:
 1. **(If WAV) Function 1: Convert WAV to MP3**
 2. **Function 2: Transcribe** (choose OpenAI Whisper or MS Word Online mode)
 3. **Edit JSON** (fix speaker names, correct text)
-4. **Function 4: Generate TXT, VTT & PDF** from edited JSON
+4. **Function 4: Generate TXT, VTT, CSV & PDF** from edited JSON
 
 ---
 
@@ -1558,7 +1693,7 @@ For each audio file:
             "help_file": None
         },
         "function_4_generate_outputs": {
-            "label": "4: Generate TXT, VTT & PDF from JSON",
+            "label": "4: Generate TXT, VTT, CSV & PDF from JSON",
             "icon": "📄",
             "handler": on_function_4_generate_outputs,
             "help_file": "FUNCTION_4_GENERATE_OUTPUTS.md"
@@ -1676,20 +1811,264 @@ For each audio file:
             add_log_message(f"Error reading help file: {str(e)}")
             update_status(f"Error reading help file: {str(e)}", True)
 
+    def build_speaker_mapping(ui_speaker_names: list[str], reviewed_by_name: str = "") -> dict:
+        """Build a normalised speaker mapping with 'Interviewer', 'Speaker N' keys plus 'Reviewed By'."""
+        mapping: dict = {}
+        keys = ["Interviewer"] + [f"Speaker {i}" for i in range(1, len(ui_speaker_names))]
+        for key, name in zip(keys, ui_speaker_names):
+            if key == "Interviewer":
+                # Default to the literal word "Interviewer" when the field is left blank
+                mapping[key] = name.strip() if name and name.strip() else "Interviewer"
+            else:
+                mapping[key] = name.strip() if name and name.strip() else ""
+        mapping["Reviewed By"] = reviewed_by_name.strip() if reviewed_by_name and reviewed_by_name.strip() else ""
+        return mapping
+
+    def build_provenance_notes(method: str, extra: dict | None = None) -> dict:
+        """Build a provenance/notes dict capturing how and when a transcript was created."""
+        import sys
+        now = datetime.now()
+
+        # System / machine info
+        try:
+            hostname = socket.gethostname()
+        except Exception:
+            hostname = "unknown"
+        try:
+            fqdn = socket.getfqdn()
+        except Exception:
+            fqdn = hostname
+
+        notes = {
+            "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
+            "created_at_human": now.strftime("%A, %B %d, %Y at %I:%M:%S %p"),
+            "transcription_method": method,
+            "app": "OHW — Oral History Workflow",
+            "system": {
+                "hostname": hostname,
+                "fqdn": fqdn,
+                "os": platform.platform(),
+                "os_name": platform.system(),
+                "os_version": platform.version(),
+                "machine": platform.machine(),
+                "processor": platform.processor(),
+                "python_version": sys.version,
+            },
+        }
+
+        # Whisper-specific details — only relevant when Whisper was the transcription engine
+        if "whisper" in method.lower():
+            if WHISPER_AVAILABLE:
+                try:
+                    import whisper as _whisper
+                    notes["whisper_version"] = getattr(_whisper, "__version__", "unknown")
+                except Exception:
+                    notes["whisper_version"] = "unknown"
+            try:
+                import torch as _torch
+                notes["torch_version"] = _torch.__version__
+                notes["cuda_available"] = _torch.cuda.is_available()
+            except Exception:
+                pass
+
+        if extra:
+            notes.update(extra)
+
+        # Build human-readable narrative paragraph
+        try:
+            audio_info = notes.get("source_audio", {})
+            tech = audio_info.get("audio_technical", {})
+            sm = notes.get("speaker_mapping", {})
+
+            # Date / method sentence
+            narrative = (
+                f"This transcript was created on {notes['created_at_human']} "
+                f"using the {notes['app']} application."
+            )
+
+            # Transcription method
+            narrative += f" The transcription method was \"{notes['transcription_method']}\"."
+
+            # Whisper model / version
+            if "whisper_model" in notes:
+                wv = notes.get("whisper_version", "")
+                wv_str = f" (version {wv})" if wv and wv != "unknown" else ""
+                narrative += f" The Whisper model used was \"{notes['whisper_model']}\"{wv_str}, running on {notes.get('device', 'CPU')}."
+
+            # MS Word URL
+            if "ms_word_url" in notes:
+                narrative += f" The audio was transcribed via Microsoft Word Online ({notes['ms_word_url']})."
+
+            # Language / segments
+            if "detected_language" in notes:
+                narrative += f" The detected language was \"{notes['detected_language']}\"."
+            segs = notes.get("segment_count")
+            if segs is not None:
+                narrative += f" The transcript contains {segs} segments."
+
+            # Source audio
+            src_file = audio_info.get("selected_file", {}).get("filename", "")
+            xcd_file = audio_info.get("transcribed_file", {}).get("filename", "")
+            started_wav = audio_info.get("started_from_wav")
+            if src_file:
+                if started_wav:
+                    narrative += (
+                        f" The source audio originated as a WAV file (\"{src_file}\"),"
+                        f" which was converted to MP3 (\"{xcd_file}\") before transcription."
+                    )
+                else:
+                    narrative += f" The source audio file was \"{src_file}\"."
+            wav_list = audio_info.get("wav_in_output_directory", [])
+            if wav_list:
+                wav_names = ", ".join(Path(w).name for w in wav_list)
+                narrative += f" A WAV file ({wav_names}) is also present in the output directory."
+
+            # Technical audio details
+            if tech and "error" not in tech:
+                dur = tech.get("duration_human", "")
+                codec = tech.get("codec", "")
+                sr = tech.get("sample_rate_hz", "")
+                br = tech.get("bit_rate_kbps", "")
+                parts = []
+                if dur:
+                    parts.append(f"duration {dur}")
+                if codec:
+                    parts.append(f"codec {codec}")
+                if sr:
+                    parts.append(f"sample rate {sr} Hz")
+                if br:
+                    parts.append(f"bit rate {br} kbps")
+                if parts:
+                    narrative += f" Audio technical details: {', '.join(parts)}."
+
+            # Speaker mapping
+            interviewer_val = sm.get("Interviewer", "")
+            interviewer_named = bool(
+                interviewer_val and interviewer_val.strip()
+                and interviewer_val.strip().lower() != "interviewer"
+            )
+            # Only list Speaker N entries with real values
+            named_speakers = {
+                k: v for k, v in sm.items()
+                if k not in ("Reviewed By", "Interviewer") and v and v.strip()
+            }
+            # Include Interviewer only when a real name was provided
+            if interviewer_named:
+                named_speakers = {"Interviewer": interviewer_val.strip(), **named_speakers}
+            reviewer = sm.get("Reviewed By", "")
+            if named_speakers:
+                speaker_list = "; ".join(f"{k}: {v}" for k, v in named_speakers.items())
+                narrative += f" The individual(s) identified as speaker(s) are: {speaker_list}."
+            if not interviewer_named:
+                narrative += " Interviewer was not specifically identified."
+            if reviewer:
+                narrative += f" The transcript was reviewed and edited by {reviewer}."
+
+            # System / machine — omit hostname for privacy; show machine type and OS only
+            sys_info = notes.get("system", {})
+            os_name = sys_info.get("os_name", "")
+            machine = sys_info.get("machine", "")
+            os_display = {"Darwin": "macOS", "Windows": "Windows", "Linux": "Linux"}.get(os_name, os_name)
+            machine_display = "Apple Silicon Mac" if machine in ("arm64", "aarch64") else (
+                "Intel Mac" if os_name == "Darwin" else (
+                    "PC" if os_name in ("Windows", "Linux") else machine
+                )
+            )
+            if os_display or machine_display:
+                parts = [p for p in (machine_display, os_display) if p]
+                narrative += f" Processing was performed on a {', '.join(parts)} system."
+
+            notes["narrative"] = narrative.strip()
+        except Exception:
+            notes["narrative"] = "Narrative generation failed."
+
+        # Reorder so narrative is always the first key in the notes dict
+        return {"narrative": notes.pop("narrative"), **notes}
+
+    def collect_audio_file_info(audio_path: Path, selected_path: Path, out_dir: Path | None = None) -> dict:
+        """Collect technical metadata about the source audio file(s)."""
+        info: dict = {}
+
+        def file_stats(p: Path) -> dict:
+            try:
+                st = p.stat()
+                return {
+                    "path": str(p),
+                    "filename": p.name,
+                    "size_bytes": st.st_size,
+                    "size_human": f"{st.st_size / (1024 * 1024):.2f} MB",
+                    "modified": datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+                }
+            except Exception as exc:
+                return {"path": str(p), "error": str(exc)}
+
+        # The file actually transcribed
+        info["transcribed_file"] = file_stats(audio_path)
+        info["transcribed_file_type"] = audio_path.suffix.lower().lstrip(".")
+
+        # The file the user originally selected
+        info["selected_file"] = file_stats(selected_path)
+        info["selected_file_type"] = selected_path.suffix.lower().lstrip(".")
+        info["started_from_wav"] = selected_path.suffix.lower() == ".wav"
+
+        # Check for WAV counterpart in output directory
+        if out_dir:
+            wav_files = list(out_dir.glob("*.wav")) + list(out_dir.glob("*.WAV"))
+            info["wav_in_output_directory"] = [str(w) for w in wav_files] if wav_files else []
+        else:
+            info["wav_in_output_directory"] = []
+
+        # Try to read audio technical metadata via ffprobe (if available)
+        try:
+            result = subprocess.run(
+                [
+                    "ffprobe", "-v", "quiet",
+                    "-print_format", "json",
+                    "-show_format", "-show_streams",
+                    str(audio_path),
+                ],
+                capture_output=True, text=True, timeout=15,
+            )
+            if result.returncode == 0:
+                probe = json.loads(result.stdout)
+                fmt = probe.get("format", {})
+                streams = probe.get("streams", [])
+                audio_streams = [s for s in streams if s.get("codec_type") == "audio"]
+                tech: dict = {
+                    "format_name": fmt.get("format_long_name", fmt.get("format_name")),
+                    "duration_seconds": float(fmt.get("duration", 0)),
+                    "duration_human": str(__import__("datetime").timedelta(seconds=int(float(fmt.get("duration", 0))))),
+                    "bit_rate_kbps": round(int(fmt.get("bit_rate", 0)) / 1000, 1),
+                    "size_bytes": int(fmt.get("size", 0)),
+                }
+                if audio_streams:
+                    s = audio_streams[0]
+                    tech["codec"] = s.get("codec_long_name", s.get("codec_name"))
+                    tech["sample_rate_hz"] = int(s.get("sample_rate", 0))
+                    tech["channels"] = s.get("channels")
+                    tech["channel_layout"] = s.get("channel_layout")
+                    tech["bits_per_sample"] = s.get("bits_per_sample")
+                info["audio_technical"] = tech
+        except Exception as exc:
+            info["audio_technical"] = {"error": f"ffprobe unavailable or failed: {exc}"}
+
+        return info
+
     def save_speaker_names():
-        """Save the current speaker names to persistent storage."""
+        """Save the current speaker names and reviewer to persistent storage."""
         names = [
             speaker_name_1.value or "",
             speaker_name_2.value or "",
             speaker_name_3.value or "",
             speaker_name_4.value or "",
             speaker_name_5.value or "",
+            reviewed_by.value or "",
         ]
         storage.set_speaker_names(names)
-        logger.debug(f"Saved speaker names: {names}")
+        logger.debug(f"Saved individuals: {names}")
 
     def get_speaker_names():
-        """Get the current speaker names from the UI fields."""
+        """Get the current speaker names (indices 0-4) from the UI fields."""
         return [
             speaker_name_1.value or "",
             speaker_name_2.value or "",
@@ -1697,6 +2076,10 @@ For each audio file:
             speaker_name_4.value or "",
             speaker_name_5.value or "",
         ]
+
+    def get_reviewed_by():
+        """Get the Reviewed By name from the UI field."""
+        return reviewed_by.value or ""
 
     def execute_selected_function(function_key):
         """Execute the selected function from dropdown or show help if help mode is enabled"""
@@ -1879,12 +2262,12 @@ For each audio file:
                                     ft.Column(
                                         [
                                             ft.Text(
-                                                "Speaker Names",
+                                                "Individuals",
                                                 size=18,
                                                 weight=ft.FontWeight.BOLD,
                                             ),
                                             ft.Text(
-                                                "Enter speaker names for transcription (optional, copy/paste enabled)",
+                                                "Enter speaker names and reviewer for transcription (optional, copy/paste enabled)",
                                                 size=12,
                                                 italic=True,
                                                 color=ft.Colors.GREY_700,
@@ -1895,7 +2278,7 @@ For each audio file:
                                                     ft.Column(
                                                         [
                                                             speaker_name_1 := ft.TextField(
-                                                                label="Speaker 1",
+                                                                label="Interviewer",
                                                                 hint_text="e.g., John Doe",
                                                                 width=200,
                                                                 text_size=13,
@@ -1903,7 +2286,7 @@ For each audio file:
                                                             ),
                                                             ft.Container(height=8),  # Vertical spacing
                                                             speaker_name_2 := ft.TextField(
-                                                                label="Speaker 2",
+                                                                label="Speaker 1",
                                                                 hint_text="e.g., Jane Smith",
                                                                 width=200,
                                                                 text_size=13,
@@ -1911,7 +2294,7 @@ For each audio file:
                                                             ),
                                                             ft.Container(height=8),  # Vertical spacing
                                                             speaker_name_3 := ft.TextField(
-                                                                label="Speaker 3",
+                                                                label="Speaker 2",
                                                                 hint_text="Optional",
                                                                 width=200,
                                                                 text_size=13,
@@ -1924,7 +2307,7 @@ For each audio file:
                                                     ft.Column(
                                                         [
                                                             speaker_name_4 := ft.TextField(
-                                                                label="Speaker 4",
+                                                                label="Speaker 3",
                                                                 hint_text="Optional",
                                                                 width=200,
                                                                 text_size=13,
@@ -1932,8 +2315,16 @@ For each audio file:
                                                             ),
                                                             ft.Container(height=8),  # Vertical spacing
                                                             speaker_name_5 := ft.TextField(
-                                                                label="Speaker 5",
+                                                                label="Speaker 4",
                                                                 hint_text="Optional",
+                                                                width=200,
+                                                                text_size=13,
+                                                                on_change=lambda e: save_speaker_names(),
+                                                            ),
+                                                            ft.Container(height=8),  # Vertical spacing
+                                                            reviewed_by := ft.TextField(
+                                                                label="Reviewed By",
+                                                                hint_text="Reviewer / editor name",
                                                                 width=200,
                                                                 text_size=13,
                                                                 on_change=lambda e: save_speaker_names(),
@@ -2031,6 +2422,7 @@ For each audio file:
     speaker_name_3.value = saved_names[2] if len(saved_names) > 2 else ""
     speaker_name_4.value = saved_names[3] if len(saved_names) > 3 else ""
     speaker_name_5.value = saved_names[4] if len(saved_names) > 4 else ""
+    reviewed_by.value = saved_names[5] if len(saved_names) > 5 else ""
     
     page.update()
 

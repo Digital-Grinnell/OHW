@@ -7,7 +7,7 @@ Provide step-by-step instructions for manual transcription using Microsoft Word 
 
 ## Requirements
 - **Microsoft 365 subscription** - Required for Word Online transcription feature
-- **MP3 file** - Select an MP3 file (either standalone or one created by Function 1)
+- **MP3 or WAV file** - Select an MP3 or WAV file. If a WAV is selected, the app will automatically locate the converted MP3 in the output directory.
 - **Internet connection** - Transcription happens in the cloud
 - **Modern web browser** - Chrome, Firefox, Safari, or Edge
 
@@ -27,10 +27,12 @@ Use MS Word Online mode instead of Whisper mode when:
 2. In the **Inputs** section, click **Browse...** to select a directory containing your audio files
 3. Click **List WAV and MP3 Files** to scan the directory and all subdirectories
 4. From the **Select Audio File** dropdown, choose the MP3 file you want to transcribe
-5. **(Optional)** Enter speaker names in the 5 **Speaker Names** text fields
-   - These names will be displayed in the instructions dialog
-   - Names will be automatically applied when converting DOCX to JSON
-   - Names are preserved exactly as entered (no uppercase conversion)
+5. **(Optional)** Enter names in the **Individuals** panel
+   - **Interviewer** — defaults to "Interviewer" if left blank
+   - **Speaker 1–4** — the oral history subject(s)
+   - **Reviewed By** — reviewer/editor name (omitted from narrative if blank)
+   - Names are displayed in the instructions dialog and applied during DOCX-to-JSON conversion
+   - Stored with normalised keys: `Interviewer`, `Speaker 1` … `Speaker 4`, `Reviewed By`
 6. In the **Active Functions** dropdown, select **"2: Transcribe with Selected Mode"**
 7. A dialog will appear with detailed step-by-step instructions
 8. Follow the instructions to complete the transcription process

@@ -10,7 +10,7 @@ Transcribe MP3 audio files to text using OpenAI Whisper, generating a clean segm
   - `openai-whisper` - OpenAI's Whisper transcription model
   - `torch` and `torchaudio` - PyTorch dependencies
   - Install with: `pip install openai-whisper torch torchaudio`
-- **MP3 file** - Select an MP3 file (either standalone or one created by Function 1)
+- **MP3 or WAV file** - Select an MP3 or WAV file. If a WAV is selected the app will automatically locate the converted MP3 in the output directory.
 - **Disk space** - Whisper base model requires ~140MB
 - **Time** - Transcription takes 2-5 minutes per hour of audio
 
@@ -19,11 +19,9 @@ Transcribe MP3 audio files to text using OpenAI Whisper, generating a clean segm
 1. Select **OpenAI Whisper** in the **Transcription Mode** radio buttons
 2. In the **Inputs** section, click **Browse...** to select a directory containing your audio files
 3. Click **List WAV and MP3 Files** to scan the directory and all subdirectories
-4. From the **Select Audio File** dropdown, choose the MP3 file you want to transcribe
-   - Files are displayed with relative paths (e.g., `subdir/file.mp3`)
-   - The app searches `~/OHW-data/` for an existing directory matching the file's basename
-   - If found, it reuses that directory and epoch timestamp
-   - If not found, it creates a new directory named `<basename> - dg_<epoch>`
+4. From the **Select Audio File** dropdown, choose the audio file you want to transcribe
+   - WAV or MP3 files are both accepted
+   - If you select a WAV file, the app will look for the converted MP3 in the output directory and use it automatically
 5. In the **Active Functions** dropdown, select **"2: Transcribe with Selected Mode"**
 6. The function will:
    - Load the OpenAI Whisper base model (automatic download on first use)
@@ -37,7 +35,7 @@ Transcribe MP3 audio files to text using OpenAI Whisper, generating a clean segm
    - Fix transcription errors or spelling
    - Adjust timestamps if needed
    - Correct text content
-8. Use **Function 3** to generate final TXT and VTT outputs from your edited JSON
+8. Use **Function 4** to generate final TXT, VTT, CSV, and PDF outputs from your edited JSON
 
 ## Output Directory
 
@@ -112,9 +110,9 @@ OpenAI Whisper generates **1 JSON file** that serves as the master transcript:
 pip install openai-whisper torch torchaudio
 ```
 
-### Not an MP3 file
-**Problem**: Selected file is a WAV or other format
-**Solution**: Only MP3 files can be transcribed with this function. Convert WAV to MP3 using Function 1 first.
+### Not an audio file
+**Problem**: Selected file is neither WAV nor MP3
+**Solution**: Convert or re-encode the file to MP3 format first. WAV files are also accepted directly.
 
 ### Transcription JSON already exists
 **Problem**: Output JSON already exists in the output directory
@@ -158,7 +156,7 @@ Example output log:
 ✅ Transcription complete! Language: en
 ✅ Segments: 45
 ℹ️  Edit the JSON file to change speaker names from SPEAKER_00, fix spelling, etc.
-ℹ️  Then use Function 3 to generate TXT and VTT outputs.
+- ℹ️  Then use **Function 4** to generate TXT, VTT, CSV, and PDF outputs.
 ```
 
 ## Notes
@@ -168,5 +166,5 @@ Example output log:
 - All segments default to SPEAKER_00 - edit JSON to add speaker changes
 - Timestamps are approximate (±1 second)
 - The base model provides a good balance of speed and accuracy
-- JSON is meant to be edited before final TXT/VTT generation
+- JSON is meant to be edited before final TXT/VTT/CSV/PDF generation
 - All processing is local - audio never leaves your computer

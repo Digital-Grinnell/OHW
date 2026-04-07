@@ -31,12 +31,13 @@ Choose between two transcription methods:
 ### Function 3: [Future Function]
 Placeholder for additional processing capabilities
 
-### Function 4: Generate TXT, VTT & PDF from JSON
+### Function 4: Generate TXT, VTT, CSV & PDF from JSON
 - Reads edited JSON transcript (from Function 2)
-- Generates three output formats:
+- Generates four output formats:
   - **TXT** - Plain text with timestamps and speaker labels
   - **VTT** - WebVTT subtitle format for video players
-  - **PDF** - Formatted document with headers and timestamps
+  - **CSV** - Spreadsheet-friendly format with timestamp, speaker, and words columns
+  - **PDF** - Formatted document with descriptive title, provenance section, and transcript
 - All outputs include:
   - Audio file header
   - Transcript section
@@ -57,11 +58,12 @@ Placeholder for additional processing capabilities
 
 ## Additional Features
 
-### Speaker Names Management
-- **5 persistent speaker name fields** in the UI
+### Individuals Management
+- **6 persistent name fields** in the UI: Interviewer, Speaker 1–4, and Reviewed By
+- Interviewer defaults to the label "Interviewer" when left blank
 - Names are saved automatically and persist across sessions
-- Used in MS Word Online instructions
-- Applied when converting DOCX to JSON
+- Used in MS Word Online instructions and DOCX-to-JSON conversion
+- Speaker mapping stored in the JSON `notes` block with normalised keys
 - Maintains exact formatting (no uppercase conversion or underscores)
 
 ### Transcription Mode Selection
@@ -139,8 +141,9 @@ All dependencies are installed automatically by `run.sh`:
    - **Whisper**: Automatic processing, creates JSON directly
    - **MS Word Online**: Follow instructions, download DOCX, click "Convert to JSON"
 
-5. **Edit Speaker Names** (Optional but recommended)
-   - Enter speaker names in the 5 text fields in the UI
+5. **Edit Individuals** (Optional but recommended)
+   - Enter names in the **Individuals** panel: Interviewer, Speaker 1–4, Reviewed By
+   - Interviewer defaults to "Interviewer" when left blank
    - Names are used in MS Word instructions and DOCX conversion
    - Names persist across sessions
 
@@ -153,8 +156,9 @@ All dependencies are installed automatically by `run.sh`:
 
 7. **Generate Final Outputs**
    - Run **Function 4** to create deliverables
-   - Generates: TXT, VTT, and PDF files
+   - Generates: TXT, VTT, CSV, and PDF files
    - All formats include timestamps and speaker labels
+   - PDF opens with a descriptive title and provenance section
 
 8. **Track Progress** (Optional)
    - Run **Function 5** to generate progress report
@@ -173,7 +177,8 @@ All processed files are organized in directories under `~/OHW-data/`:
 │   ├── dg_<epoch>_transcript.json  # Editable transcript
 │   ├── dg_<epoch>.txt          # Plain text output
 │   ├── dg_<epoch>.vtt          # Video subtitle format
-│   └── dg_<epoch>.pdf          # Formatted document
+│   ├── dg_<epoch>.csv          # Spreadsheet-friendly output
+│   └── dg_<epoch>.pdf          # Formatted document with provenance
 └── workflow_progress_YYYYMMDD_HHMMSS.md  # Progress reports
 ```
 
@@ -182,13 +187,26 @@ All processed files are organized in directories under `~/OHW-data/`:
 #### JSON Transcript
 ```json
 {
+  "notes": {
+    "narrative": "Human-readable provenance paragraph …",
+    "created_at": "2026-04-07 14:24:13",
+    "transcription_method": "MS Word Online (manual transcription)",
+    "app": "OHW — Oral History Workflow",
+    "system": { "hostname": "…", "os_name": "Darwin", "machine": "arm64" },
+    "speaker_mapping": {
+      "Interviewer": "Interviewer",
+      "Speaker 1": "Jane Smith",
+      "Reviewed By": "Mark McFate"
+    },
+    "source_audio": { "…": "technical metadata" }
+  },
   "language": "en",
   "segments": [
     {
       "start": 0.0,
       "end": 5.42,
       "text": "Hello, welcome to the interview.",
-      "speaker": "John Doe"
+      "speaker": "Interviewer"
     }
   ]
 }

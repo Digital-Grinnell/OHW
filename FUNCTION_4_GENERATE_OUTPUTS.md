@@ -1,7 +1,7 @@
-# Function 4: Generate TXT, VTT & PDF from JSON
+# Function 4: Generate TXT, VTT, CSV & PDF from JSON
 
 ## Purpose
-Generate final output files (TXT, VTT, and PDF) from the edited JSON transcript created by Function 2a or Function 2b. This allows you to perfect the transcript—fixing speaker names, correcting transcription errors, and adjusting content—before creating the final deliverable files.
+Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transcript created by Function 2a or Function 2b. This allows you to perfect the transcript—fixing speaker names, correcting transcription errors, and adjusting content—before creating the final deliverable files.
 
 ## Requirements
 - **Prerequisite**: Function 2a or Function 2b must have been run to create the initial JSON transcript
@@ -17,11 +17,12 @@ Generate final output files (TXT, VTT, and PDF) from the edited JSON transcript 
    - Correct spelling and punctuation
    - Adjust timestamps if necessary
 3. **Save the edited JSON** (maintain proper JSON format)
-4. In the **Active Functions** dropdown, select **"📄 4: Generate TXT, VTT & PDF from JSON"**
+4. In the **Active Functions** dropdown, select **"📄 4: Generate TXT, VTT, CSV & PDF from JSON"**
 5. The function will:
    - Read your edited JSON file
    - Generate a formatted TXT file with speaker labels
    - Generate a VTT subtitle file with speaker tags
+   - Generate a CSV file with timestamp, speaker, and words columns
    - Generate a formatted PDF with timestamps and speaker labels
 6. Monitor the status and log output for progress
 
@@ -41,12 +42,13 @@ For example:
   ├── dg_1712345678_transcript.json      (from Function 2a/2b, YOU EDIT THIS)
   ├── dg_1712345678.txt                  (from Function 4)
   ├── dg_1712345678.vtt                  (from Function 4)
+  ├── dg_1712345678.csv                  (from Function 4)
   └── dg_1712345678.pdf                  (from Function 4)
 ```
 
 ## Output Files
 
-Function 4 generates **3 final output files** from your edited JSON:
+Function 4 generates **4 final output files** from your edited JSON:
 
 ### 1. Plain Text (.txt)
 - **Filename**: `dg_<epoch>.txt`
@@ -81,30 +83,27 @@ Function 4 generates **3 final output files** from your edited JSON:
   ```
 - **Use case**: HTML5 video subtitles, web accessibility, video editing
 
-### 3. PDF (.pdf)
-- **Filename**: `dg_<epoch>.pdf`
-- **Contents**: Formatted transcript with timestamps and speaker labels
+### 3. CSV (.csv)
+- **Filename**: `dg_<epoch>.csv`
+- **Contents**: Transcript data in spreadsheet-friendly format
 - **Format**:
   ```
-  Audio file
-  dg_1775499960.mp3
-
-  Transcript
-
-  [00:00:00] John Doe
-  Hello, welcome to the interview.
-
-  [00:00:05] Jane Smith
-  Thank you for having me.
+  timestamp,speaker,words
+  00:00:00,John Doe,Hello welcome to the interview.
+  00:00:05,Jane Smith,Thank you for having me.
   ```
+- **Use case**: Data analysis, import into spreadsheets, database ingestion, further processing
+
+### 4. PDF (.pdf)
+- **Filename**: `dg_<epoch>.pdf`
+- **Contents**: Formatted transcript with timestamps and speaker labels
 - **Features**:
+  - Descriptive document title: "Oral History Transcript: \<speaker names\>"
+  - **Provenance section**: human-readable narrative from `notes.narrative`
   - Audio file header with MP3 filename
-  - Transcript header section
-  - Timestamps in [HH:MM:SS] format
+  - Transcript section with timestamps in [HH:MM:SS] format
   - Speaker names on the same line as timestamp
-  - Single line break before text
-  - Double spacing between transcript sections
-- **Use case**: Professional documents, archival, distribution, printing
+  - PDF metadata (title, author) for proper cataloguing
 
 ## JSON Structure
 
@@ -112,30 +111,42 @@ Here's what the JSON structure looks like (simplified):
 
 ```json
 {
+  "notes": {
+    "narrative": "Human-readable provenance paragraph …",
+    "created_at": "2026-04-07 14:24:13",
+    "transcription_method": "MS Word Online (manual transcription)",
+    "app": "OHW — Oral History Workflow",
+    "speaker_mapping": {
+      "Interviewer": "Interviewer",
+      "Speaker 1": "Jane Smith",
+      "Reviewed By": "Mark McFate"
+    },
+    "source_audio": { "…": "technical metadata" }
+  },
   "language": "en",
   "segments": [
     {
       "start": 0.0,
       "end": 5.42,
       "text": " Hello, welcome to the interview.",
-      "speaker": "SPEAKER_00"
+      "speaker": "Interviewer"
     },
     {
       "start": 5.42,
       "end": 8.92,
       "text": " Thank you for having me.",
-      "speaker": "SPEAKER_01"
+      "speaker": "Speaker 1"
     }
   ]
 }
 ```
 
 **Fields you can edit:**
-- `speaker`: Change from SPEAKER_XX to real names
+- `speaker`: Change from SPEAKER_XX to real names, or enter `Interviewer` / `Speaker 1` etc.
 - `text`: Fix transcription errors, spelling, punctuation
 - `start`/`end`: Adjust timestamps (in seconds)
 
-**Important:** Keep the JSON structure intact (brackets, commas, quotes)
+**Note:** The `notes` block is written by Function 2 and read by Function 4 to generate the PDF title and provenance section. Do not remove it.
 
 ## Technical Details
 
@@ -144,7 +155,9 @@ Here's what the JSON structure looks like (simplified):
 2. Validates JSON structure
 3. Generates TXT file with speaker labels and line breaks
 4. Generates VTT file with timestamps and speaker voice tags
-5. Both files reflect your edits from the JSON
+5. Generates CSV file with timestamp, speaker, and words columns
+6. Generates PDF file with formatted transcript
+7. All files reflect your edits from the JSON
 
 ### Speaker Label Formatting
 - **TXT**: Speaker names appear on their own line followed by colon (`John Doe:`)
@@ -152,9 +165,9 @@ Here's what the JSON structure looks like (simplified):
 - Speaker changes trigger new paragraphs/segments
 
 ### File Handling
-- Overwrites existing TXT and VTT files (allows regeneration after JSON edits)
+- Overwrites existing TXT, VTT, CSV, and PDF files (allows regeneration after JSON edits)
 - JSON file is read-only (never modified by this function)
-- You can run Function 3 multiple times after editing JSON
+- You can run Function 4 multiple times after editing JSON
 
 ## Common Issues
 
@@ -211,11 +224,11 @@ Here's what the JSON structure looks like (simplified):
 ## Workflow Summary
 
 ```
-Function 2: MP3 → JSON (with speakers)
+Function 2: Audio → JSON transcript (with provenance notes)
    ↓
 [YOU EDIT JSON]
    ↓
-Function 3: JSON → TXT + VTT (final outputs)
+Function 4: JSON → TXT + VTT + CSV + PDF (final outputs)
 ```
 
 This workflow gives you complete control over the final transcript while preserving all the benefits of automated transcription and speaker identification.
