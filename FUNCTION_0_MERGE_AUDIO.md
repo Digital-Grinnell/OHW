@@ -24,6 +24,8 @@ Use this function when a recording was split across multiple files that represen
 6. Review and optionally edit the **Output Filename** (auto-filled from the common prefix of selected files).
 7. Click **Merge Files**.
 
+After a successful merge the source files are automatically moved to a `Merged/` subdirectory (see [Source File Archiving](#source-file-archiving) below).
+
 ## Output Filename
 
 The output filename is automatically suggested as:
@@ -66,6 +68,25 @@ The merged file is placed **in the same directory as the source files** (the cur
 
 After merging, click **List WAV and MP3 Files** to refresh the file list, then select the merged file and run Function 1 (if WAV) or Function 2 (to transcribe).
 
+## Source File Archiving
+
+Immediately after the merged file is created, all source files that were selected for the merge are **moved** into a `Merged/` subdirectory of the current input directory:
+
+```
+<input directory>/
+    Kerry Bart (merged).wav          ← merged output
+    Kerry Bart (merged).merge_info.json
+    Merged/
+        Kerry Bart Part 1.wav        ← originals archived here
+        Kerry Bart Part 2.wav
+```
+
+- The `Merged/` subdirectory is created automatically if it does not already exist.
+- If a file with the same name already exists in `Merged/`, a numeric suffix (`_1`, `_2`, …) is appended to the destination name to avoid overwriting.
+- Source files are moved, not copied — the originals are no longer in the input directory after a successful merge.
+- The `Merged/` subdirectory is **excluded** from all audio file listings (the **List WAV and MP3 Files** button) and from the **Function 5 workflow statistics**, so archived originals are never double-counted.
+- If the move fails for any file (e.g. permission error), the failure is logged but the merge output is still kept.
+
 ## Merge Provenance (Sidecar File)
 
 Immediately after a successful merge, Function 0 writes a JSON sidecar file alongside the merged audio:
@@ -107,6 +128,7 @@ This means the provenance of every merged recording is preserved all the way thr
 ## Notes
 
 - The function will refuse to overwrite an existing file with the same output name.
-- The source files are **not** deleted or modified.
+- Source files are **moved** (not deleted) into the `Merged/` subdirectory after a successful merge.
 - Merging large files may take a minute; a status message is shown while ffmpeg runs.
-- The `.merge_info.json` sidecar is written even if the source files come from a different directory than the current working directory; it always lives next to the merged output file.
+- The `.merge_info.json` sidecar is written next to the merged output file and remains in the input directory (not moved to `Merged/`).
+- Any `Merged/` subdirectory is ignored by **List WAV and MP3 Files** and **Function 5 Report Progress** so archived originals never appear in file counts or statistics.
