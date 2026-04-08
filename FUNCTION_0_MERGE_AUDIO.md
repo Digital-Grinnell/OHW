@@ -1,0 +1,112 @@
+# Function 0: Merge Audio Files
+
+## Purpose
+
+Concatenates two or more WAV or MP3 files from the **current input directory** into a single output file. The merged file is placed in the same directory as the source files.
+
+## When to Use
+
+Use this function when a recording was split across multiple files that represent a single continuous session — for example, when a recorder stopped and restarted, or when separate segments need to be combined before transcription.
+
+## Requirements
+
+- **ffmpeg** must be installed (`brew install ffmpeg` on macOS).
+- At least **two** WAV or MP3 files must be present in the current input directory.
+- The input directory must be selected first (use the **Browse…** button in the Inputs section).
+
+## Workflow
+
+1. Select the input directory in the **Inputs** section (the directory containing your audio files).
+2. Select **Function 0: Merge Audio Files** from the Active Functions dropdown.
+3. A dialog opens showing all WAV and MP3 files found in that directory.
+4. Click **Add →** next to each file you want to merge, in the order they should be joined (top of the Merge Order list = start of the combined recording).
+5. Use the **↑ ↓** arrows to reorder files in the Merge Order list if needed.
+6. Review and optionally edit the **Output Filename** (auto-filled from the common prefix of selected files).
+7. Click **Merge Files**.
+
+## Output Filename
+
+The output filename is automatically suggested as:
+
+```
+<common prefix> (merged).<ext>
+```
+
+Where `<common prefix>` is the longest common prefix shared by all selected filenames (trailing dashes, underscores, spaces, and parentheses are stripped), and `<ext>` matches the extension of the first selected file.
+
+**Examples:**
+
+| Selected files | Suggested output |
+|---|---|
+| `Interview_Part1.wav`, `Interview_Part2.wav` | `Interview_Part (merged).wav` |
+| `Session A.mp3`, `Session B.mp3`, `Session C.mp3` | `Session (merged).mp3` |
+| `Hall_01.wav`, `Hall_02.wav` | `Hall_ (merged).wav` |
+
+You can edit the output filename in the dialog before merging.
+
+## File Order Preservation
+
+The native OS file picker does **not** preserve click-selection order. Function 0 uses a custom in-app dialog instead, where you explicitly add files one at a time — the order in which you click **Add →** becomes the merge order. Use the ↑ ↓ arrows to adjust the order at any time before merging.
+
+## Format Handling
+
+| Situation | Behavior |
+|---|---|
+| All selected files share the same format (e.g. all WAV) and the output extension matches | Stream copy — fast, lossless, no re-encoding |
+| All MP3, output is MP3 | Stream copy |
+| Mixed formats (WAV + MP3) | Re-encode to the output format |
+| Mixed formats, output is MP3 | Re-encode using libmp3lame at VBR quality 2 (~190 kbps), 44100 Hz |
+| Mixed formats, output is WAV | Re-encode to 16-bit PCM WAV |
+
+For best results, merge files of the same format.
+
+## Output Location
+
+The merged file is placed **in the same directory as the source files** (the current input directory). It is **not** copied to an OHW-data output directory — it is a source-level merge intended to produce a single clean file to feed into the rest of the workflow.
+
+After merging, click **List WAV and MP3 Files** to refresh the file list, then select the merged file and run Function 1 (if WAV) or Function 2 (to transcribe).
+
+## Merge Provenance (Sidecar File)
+
+Immediately after a successful merge, Function 0 writes a JSON sidecar file alongside the merged audio:
+
+```
+<output_stem>.merge_info.json
+```
+
+For example, if the merged file is `Interview_Part (merged).wav`, the sidecar is `Interview_Part (merged).merge_info.json`.
+
+### Sidecar Contents
+
+```json
+{
+  "merged_at": "2026-04-08 14:32:01",
+  "merged_at_human": "Tuesday, April 08, 2026 at 02:32:01 PM",
+  "output_file": "Interview_Part (merged).wav",
+  "source_count": 2,
+  "source_files": [
+    { "order": 1, "filename": "Interview_Part1.wav", "path": "/path/to/Interview_Part1.wav" },
+    { "order": 2, "filename": "Interview_Part2.wav", "path": "/path/to/Interview_Part2.wav" }
+  ],
+  "ffmpeg_codec": "copy"
+}
+```
+
+### Integration with Transcription (Functions 2a / 2b)
+
+When the merged file is later transcribed, `collect_audio_file_info` automatically detects the sidecar (by looking for `<stem>.merge_info.json` next to the audio file) and includes its contents in `notes.source_audio.merge_info` inside the transcript JSON.
+
+### Integration with `notes.narrative`
+
+The merge details are also woven into the human-readable `notes.narrative` paragraph in the transcript JSON. For example:
+
+> *This audio file was created by merging 2 source file(s) ("Interview_Part1.wav", "Interview_Part2.wav") on Tuesday, April 08, 2026 at 02:32:01 PM using Function 0 (Merge Audio Files) of the OHW application.*
+
+This means the provenance of every merged recording is preserved all the way through to the final transcript and any outputs generated by Function 4.
+
+## Notes
+
+- The function will refuse to overwrite an existing file with the same output name.
+- The source files are **not** deleted or modified.
+- Merging large files may take a minute; a status message is shown while ffmpeg runs.
+- The `.merge_info.json` sidecar is written even if the source files come from a different directory than the current working directory; it always lives next to the merged output file.

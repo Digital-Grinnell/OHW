@@ -347,10 +347,12 @@ def main(page: ft.Page):
             return
 
         try:
-            # Find all WAV and MP3 files recursively, case-insensitive on any filesystem
+            # Find all WAV and MP3 files recursively, excluding any Merged/ subdirectories
             audio_files = [
                 f for f in current_directory.rglob("*")
-                if f.is_file() and f.suffix.lower() in (".wav", ".mp3")
+                if f.is_file()
+                and f.suffix.lower() in (".wav", ".mp3")
+                and "Merged" not in f.relative_to(current_directory).parts
             ]
             
             # Sort by relative path
@@ -474,6 +476,413 @@ def main(page: ft.Page):
     file_selection_dropdown.on_change = on_file_selected
 
     # -------------------------------------------------------- function handlers
+
+    def on_function_0_merge_audio(e):
+        """Function 0: Merge two or more audio files from the current directory into one."""
+        nonlocal current_directory
+
+        if not current_directory or not current_directory.exists():
+            update_status("Please select a directory first", is_error=True)
+            add_log_message("No directory selected. Use Inputs section to select a directory first.")
+            return
+
+        if not check_ffmpeg():
+            update_status("⚠️  ffmpeg not found — install it before merging audio files.", is_error=True)
+            add_log_message("ffmpeg not installed. Install via: brew install ffmpeg (macOS)")
+            return
+
+        # Find WAV and MP3 files in current directory only (not subdirectories)
+        dir_audio_files = sorted(
+            [f for f in current_directory.iterdir()
+             if f.is_file() and f.suffix.lower() in (".wav", ".mp3")],
+            key=lambda p: p.name.lower(),
+        )
+
+        if len(dir_audio_files) < 2:
+            update_status(
+                f"Need at least 2 audio files in {current_directory.name} to merge.",
+                is_error=True,
+            )
+            add_log_message(
+                f"Only {len(dir_audio_files)} audio file(s) found in {current_directory.name}. "
+                "Need at least 2 to merge."
+            )
+            return
+
+        # Mutable selection state — list of Path objects in user-chosen order
+        selected_ordered: list = []
+
+        # ---- Dialog widgets ----
+        output_name_field = ft.TextField(
+            label="Output Filename",
+            hint_text="Auto-detected from common name prefix",
+            width=500,
+            text_size=13,
+        )
+        merge_status_text = ft.Text("", size=13, color=ft.Colors.GREY_700, italic=True)
+        selected_column = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
+        available_column = ft.Column(spacing=4, scroll=ft.ScrollMode.AUTO)
+
+        def compute_output_name():
+            if not selected_ordered:
+                return ""
+            stems = [f.stem for f in selected_ordered]
+            common = os.path.commonprefix(stems) if len(stems) > 1 else stems[0]
+            common = common.rstrip(" -_()")
+            if not common:
+                common = "merged"
+            ext = selected_ordered[0].suffix.lower()
+            return f"{common} (merged){ext}"
+
+        def refresh_dialog():
+            available_column.controls.clear()
+            for path in dir_audio_files:
+                is_sel = path in selected_ordered
+                available_column.controls.append(
+                    ft.Row(
+                        [
+                            ft.Text(
+                                path.name, size=12, expand=True,
+                                color=ft.Colors.GREY_500 if is_sel else None,
+                            ),
+                            ft.TextButton(
+                                "Remove" if is_sel else "Add →",
+                                on_click=lambda ev, p=path: _toggle(p),
+                                style=ft.ButtonStyle(
+                                    color=ft.Colors.RED_400 if is_sel else ft.Colors.BLUE_700,
+                                ),
+                            ),
+                        ],
+                        spacing=2,
+                    )
+                )
+
+            selected_column.controls.clear()
+            total = len(selected_ordered)
+            for idx, path in enumerate(selected_ordered):
+                selected_column.controls.append(
+                    ft.Row(
+                        [
+                            ft.Text(
+                                f"{idx + 1}.",
+                                width=22, size=12,
+                                weight=ft.FontWeight.BOLD,
+                            ),
+                            ft.Text(path.name, size=12, expand=True),
+                            ft.IconButton(
+                                icon=ft.Icons.ARROW_UPWARD,
+                                icon_size=16,
+                                tooltip="Move up",
+                                disabled=(idx == 0),
+                                on_click=lambda ev, i=idx: _move_up(i),
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.ARROW_DOWNWARD,
+                                icon_size=16,
+                                tooltip="Move down",
+                                disabled=(idx == total - 1),
+                                on_click=lambda ev, i=idx: _move_down(i),
+                            ),
+                            ft.IconButton(
+                                icon=ft.Icons.REMOVE_CIRCLE_OUTLINE,
+                                icon_size=16,
+                                icon_color=ft.Colors.RED_400,
+                                tooltip="Remove from merge list",
+                                on_click=lambda ev, i=idx: _remove(i),
+                            ),
+                        ],
+                        spacing=2,
+                    )
+                )
+
+            # Auto-update output filename when it still looks auto-generated
+            auto = compute_output_name()
+            current_val = output_name_field.value or ""
+            if not current_val or current_val.endswith("(merged).wav") or current_val.endswith("(merged).mp3"):
+                output_name_field.value = auto
+            page.update()
+
+        def _toggle(path):
+            if path in selected_ordered:
+                selected_ordered.remove(path)
+            else:
+                selected_ordered.append(path)
+            refresh_dialog()
+
+        def _move_up(idx):
+            if idx > 0:
+                selected_ordered[idx], selected_ordered[idx - 1] = (
+                    selected_ordered[idx - 1], selected_ordered[idx]
+                )
+                refresh_dialog()
+
+        def _move_down(idx):
+            if idx < len(selected_ordered) - 1:
+                selected_ordered[idx], selected_ordered[idx + 1] = (
+                    selected_ordered[idx + 1], selected_ordered[idx]
+                )
+                refresh_dialog()
+
+        def _remove(idx):
+            del selected_ordered[idx]
+            refresh_dialog()
+
+        def on_merge_click(ev):
+            if len(selected_ordered) < 2:
+                merge_status_text.value = "⚠️  Select at least 2 files to merge."
+                merge_status_text.color = ft.Colors.RED_600
+                page.update()
+                return
+
+            output_filename = (output_name_field.value or "").strip()
+            if not output_filename:
+                merge_status_text.value = "⚠️  Output filename cannot be empty."
+                merge_status_text.color = ft.Colors.RED_600
+                page.update()
+                return
+
+            output_path = current_directory / output_filename
+            if output_path.exists():
+                merge_status_text.value = f"⚠️  Output file already exists: {output_filename}"
+                merge_status_text.color = ft.Colors.RED_600
+                page.update()
+                return
+
+            exts = {f.suffix.lower() for f in selected_ordered}
+            output_ext = Path(output_filename).suffix.lower()
+            mixed_formats = len(exts) > 1
+
+            merge_status_text.value = f"Merging {len(selected_ordered)} files…"
+            merge_status_text.color = ft.Colors.GREY_700
+            page.update()
+
+            import tempfile
+            tmp_path = None
+            try:
+                with tempfile.NamedTemporaryFile(
+                    mode="w", suffix=".txt", delete=False, encoding="utf-8"
+                ) as tmp:
+                    for f in selected_ordered:
+                        # Escape single quotes for ffmpeg concat format
+                        path_str = str(f).replace("'", "'\\''")
+                        tmp.write(f"file '{path_str}'\n")
+                    tmp_path = tmp.name
+
+                # Use stream copy when all inputs share the same container format;
+                # re-encode when mixing WAV/MP3 or when the output format differs.
+                if not mixed_formats and list(exts)[0] == output_ext:
+                    codec_args = ["-c", "copy"]
+                elif output_ext == ".mp3":
+                    codec_args = ["-codec:a", "libmp3lame", "-q:a", "2", "-ar", "44100"]
+                else:
+                    codec_args = ["-c:a", "pcm_s16le"]
+
+                cmd = [
+                    "ffmpeg",
+                    "-f", "concat",
+                    "-safe", "0",
+                    "-i", tmp_path,
+                ] + codec_args + [
+                    str(output_path),
+                    "-hide_banner",
+                    "-loglevel", "error",
+                ]
+
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+
+                if result.returncode == 0 and output_path.exists():
+                    size_mb = output_path.stat().st_size / (1024 * 1024)
+                    merged_names = ", ".join(f.name for f in selected_ordered)
+                    merge_status_text.value = (
+                        f"✅ Merged: {output_filename} ({size_mb:.1f} MB)"
+                    )
+                    merge_status_text.color = ft.Colors.GREEN_700
+                    add_log_message(
+                        f"✅ Merged {len(selected_ordered)} files → {output_filename} "
+                        f"({size_mb:.1f} MB)"
+                    )
+                    add_log_message(f"   Sources: {merged_names}")
+                    add_log_message(f"   Location: {current_directory}")
+                    update_status(f"✅ Merge complete: {output_filename}")
+                    storage.record_function_usage("function_0_merge_audio")
+
+                    # Write merge provenance sidecar (read back later by collect_audio_file_info)
+                    now_merge = datetime.now()
+                    merge_info = {
+                        "merged_at": now_merge.strftime("%Y-%m-%d %H:%M:%S"),
+                        "merged_at_human": now_merge.strftime("%A, %B %d, %Y at %I:%M:%S %p"),
+                        "output_file": output_filename,
+                        "source_count": len(selected_ordered),
+                        "source_files": [
+                            {
+                                "order": i + 1,
+                                "filename": f.name,
+                                "path": str(f),
+                            }
+                            for i, f in enumerate(selected_ordered)
+                        ],
+                        "ffmpeg_codec": codec_args[1] if codec_args and len(codec_args) > 1 else "copy",
+                    }
+                    sidecar_path = current_directory / f"{output_path.stem}.merge_info.json"
+                    try:
+                        with open(sidecar_path, "w", encoding="utf-8") as _sf:
+                            json.dump(merge_info, _sf, indent=2, ensure_ascii=False)
+                        add_log_message(f"   Provenance: {sidecar_path.name}")
+                    except Exception as _se:
+                        add_log_message(f"   ⚠️  Could not write merge provenance file: {_se}")
+
+                    # Move source files to a Merged/ subdirectory so they are excluded
+                    # from future file listings and workflow statistics.
+                    merged_subdir = current_directory / "Merged"
+                    try:
+                        merged_subdir.mkdir(exist_ok=True)
+                        moved, failed = [], []
+                        for src_file in selected_ordered:
+                            dest = merged_subdir / src_file.name
+                            # Avoid clobbering if a same-named file already exists there
+                            if dest.exists():
+                                stem_d, ext_d = src_file.stem, src_file.suffix
+                                counter = 1
+                                while dest.exists():
+                                    dest = merged_subdir / f"{stem_d}_{counter}{ext_d}"
+                                    counter += 1
+                            try:
+                                shutil.move(str(src_file), dest)
+                                moved.append(src_file.name)
+                            except Exception as _me:
+                                failed.append(f"{src_file.name} ({_me})")
+                        if moved:
+                            add_log_message(
+                                f"   Moved {len(moved)} source file(s) → {merged_subdir.name}/: "
+                                + ", ".join(moved)
+                            )
+                        if failed:
+                            add_log_message(
+                                f"   ⚠️  Could not move: " + "; ".join(failed)
+                            )
+                    except Exception as _mde:
+                        add_log_message(f"   ⚠️  Could not create Merged/ subdirectory: {_mde}")
+                else:
+                    err = (result.stderr or "").strip()
+                    merge_status_text.value = f"❌ Merge failed: {err[:200]}"
+                    merge_status_text.color = ft.Colors.RED_600
+                    add_log_message(f"❌ Merge failed: {err}")
+
+            except subprocess.TimeoutExpired:
+                merge_status_text.value = "❌ Merge timed out (>10 minutes)."
+                merge_status_text.color = ft.Colors.RED_600
+                add_log_message("❌ Merge timed out after 10 minutes")
+            except Exception as ex:
+                merge_status_text.value = f"❌ Unexpected error: {str(ex)}"
+                merge_status_text.color = ft.Colors.RED_600
+                add_log_message(f"❌ Merge error: {str(ex)}")
+            finally:
+                if tmp_path:
+                    try:
+                        os.unlink(tmp_path)
+                    except Exception:
+                        pass
+
+            page.update()
+
+        def close_merge_dialog(ev):
+            merge_dialog.open = False
+            page.update()
+
+        refresh_dialog()
+
+        merge_dialog = ft.AlertDialog(
+            title=ft.Text("🔀 Function 0: Merge Audio Files"),
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            "Click 'Add →' to queue files in the desired merge order. "
+                            "Use arrows to reorder. Output is saved to the same directory.",
+                            size=12,
+                            italic=True,
+                            color=ft.Colors.GREY_700,
+                        ),
+                        ft.Divider(height=8),
+                        ft.Row(
+                            [
+                                ft.Column(
+                                    [
+                                        ft.Text(
+                                            "Available Files",
+                                            size=13,
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
+                                        ft.Container(
+                                            content=available_column,
+                                            width=310,
+                                            height=280,
+                                            border=ft.border.all(1, ft.Colors.GREY_300),
+                                            border_radius=4,
+                                            padding=6,
+                                            clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                                        ),
+                                    ],
+                                    spacing=4,
+                                ),
+                                ft.Container(width=16),
+                                ft.Column(
+                                    [
+                                        ft.Text(
+                                            "Merge Order (top = first)",
+                                            size=13,
+                                            weight=ft.FontWeight.BOLD,
+                                        ),
+                                        ft.Container(
+                                            content=selected_column,
+                                            width=360,
+                                            height=280,
+                                            border=ft.border.all(1, ft.Colors.GREY_300),
+                                            border_radius=4,
+                                            padding=6,
+                                            clip_behavior=ft.ClipBehavior.HARD_EDGE,
+                                        ),
+                                    ],
+                                    spacing=4,
+                                ),
+                            ],
+                            spacing=0,
+                            vertical_alignment=ft.CrossAxisAlignment.START,
+                        ),
+                        ft.Divider(height=8),
+                        ft.Text(
+                            "Output filename (saved in the same directory as source files):",
+                            size=12,
+                        ),
+                        output_name_field,
+                        ft.Container(height=4),
+                        merge_status_text,
+                    ],
+                    spacing=6,
+                ),
+                width=730,
+                height=500,
+                padding=10,
+            ),
+            actions=[
+                ft.ElevatedButton(
+                    "Merge Files",
+                    icon=ft.Icons.CALL_MERGE,
+                    on_click=on_merge_click,
+                ),
+                ft.TextButton("Cancel", on_click=close_merge_dialog),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.overlay.append(merge_dialog)
+        merge_dialog.open = True
+        page.update()
+        add_log_message(
+            f"Function 0: Merge Audio Files — {len(dir_audio_files)} files available "
+            f"in {current_directory.name}"
+        )
+        update_status(f"Function 0: Select files to merge from {current_directory.name}")
 
     def on_function_1_wav_to_mp3(e):
         """Execute Function 1: WAV to MP3 Conversion"""
@@ -1446,10 +1855,14 @@ def main(page: ft.Page):
         page.update()
         
         try:
-            # Scan input directory for audio files — case-insensitive on any filesystem
+            # Scan input directory for audio files, excluding any Merged/ subdirectories
             input_files = {}
             for file_path in current_directory.rglob("*"):
-                if file_path.is_file() and file_path.suffix.lower() in (".wav", ".mp3"):
+                if (
+                    file_path.is_file()
+                    and file_path.suffix.lower() in (".wav", ".mp3")
+                    and "Merged" not in file_path.relative_to(current_directory).parts
+                ):
                     stem = file_path.stem
                     if stem not in input_files:
                         input_files[stem] = {'input_path': file_path, 'format': file_path.suffix.lower()}
@@ -1666,6 +2079,7 @@ For each audio file:
 
     # Active functions - frequently used
     active_functions = [
+        "function_0_merge_audio",
         "function_1_wav_to_mp3",
         "function_2_transcribe",
         "function_3_placeholder",
@@ -1674,6 +2088,12 @@ For each audio file:
     ]
 
     functions = {
+        "function_0_merge_audio": {
+            "label": "0: Merge Audio Files",
+            "icon": "🔀",
+            "handler": on_function_0_merge_audio,
+            "help_file": "FUNCTION_0_MERGE_AUDIO.md"
+        },
         "function_1_wav_to_mp3": {
             "label": "1: Convert WAV to MP3",
             "icon": "🎵",
@@ -1923,6 +2343,18 @@ For each audio file:
                 wav_names = ", ".join(Path(w).name for w in wav_list)
                 narrative += f" A WAV file ({wav_names}) is also present in the output directory."
 
+            # Merge provenance
+            merge_info = audio_info.get("merge_info")
+            if merge_info:
+                sources = merge_info.get("source_files", [])
+                source_names = ", ".join(f'"{s["filename"]}"' for s in sources)
+                merged_at_str = merge_info.get("merged_at_human", merge_info.get("merged_at", ""))
+                narrative += (
+                    f" This audio file was created by merging {len(sources)} source file(s)"
+                    f" ({source_names}) on {merged_at_str} using Function 0"
+                    f" (Merge Audio Files) of the OHW application."
+                )
+
             # Technical audio details
             if tech and "error" not in tech:
                 dur = tech.get("duration_human", "")
@@ -2051,6 +2483,25 @@ For each audio file:
                 info["audio_technical"] = tech
         except Exception as exc:
             info["audio_technical"] = {"error": f"ffprobe unavailable or failed: {exc}"}
+
+        # Check for merge provenance sidecar written by Function 0.
+        # The sidecar lives next to the *original* merged file in the input directory
+        # (named after the merged stem, e.g. "Kerry Bart (merged).merge_info.json").
+        # audio_path is the output-directory copy (dg_<epoch>.mp3) so its stem never
+        # matches — we must also check next to selected_path which retains the
+        # original merged filename.
+        merge_sidecar_candidates = [
+            audio_path.parent / f"{audio_path.stem}.merge_info.json",      # output dir copy
+            selected_path.parent / f"{selected_path.stem}.merge_info.json", # original input file
+        ]
+        for merge_sidecar in merge_sidecar_candidates:
+            if merge_sidecar.exists():
+                try:
+                    with open(merge_sidecar, "r", encoding="utf-8") as _mf:
+                        info["merge_info"] = json.load(_mf)
+                except Exception:
+                    pass
+                break
 
         return info
 
