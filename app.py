@@ -1189,7 +1189,7 @@ def main(page: ft.Page):
         page.update()
 
     def on_function_2b_ms_word_online(e):
-        """Provide instructions for manual transcription using MS Word Online."""
+        """Provide instructions for transcription using MS Word Online."""
         nonlocal selected_file, output_directory, current_epoch
         
         if not selected_file:
@@ -1514,7 +1514,7 @@ def main(page: ft.Page):
             
             # Create JSON in Whisper-compatible format
             notes = build_provenance_notes(
-                method="MS Word Online (manual transcription)",
+                method="MS Word Online",
                 extra={
                     "ms_word_url": "https://www.office.com/launch/word",
                     "docx_source": str(docx_path),
@@ -2013,7 +2013,7 @@ This report tracks the processing status of audio files from the input directory
 For each audio file:
 
 1. **(If WAV) Function 1: Convert WAV to MP3**
-2. **Function 2: Transcribe** (choose OpenAI Whisper or MS Word Online mode)
+2. **Function 2: Transcribe** (MS Word Online mode)
 3. **Edit JSON** (fix speaker names, correct text)
 4. **Function 4: Generate TXT, VTT, CSV & PDF** from edited JSON
 
@@ -2061,7 +2061,7 @@ For each audio file:
     # -------------------------------------------------------- function metadata
 
     # Transcription mode state (Whisper or MS Word)
-    transcription_mode = "OpenAI Whisper"  # Default mode
+    transcription_mode = "MS Word Online"  # Default mode (OpenAI Whisper disabled)
 
     def set_transcription_mode(mode):
         """Update the transcription mode selection."""
@@ -2661,12 +2661,16 @@ For each audio file:
                                     transcription_mode_radio := ft.RadioGroup(
                                         content=ft.Row(
                                             [
-                                                ft.Radio(value="OpenAI Whisper", label="OpenAI Whisper"),
+                                                ft.Radio(
+                                                    value="OpenAI Whisper",
+                                                    label="OpenAI Whisper (disabled)",
+                                                    disabled=True,
+                                                ),
                                                 ft.Radio(value="MS Word Online", label="MS Word Online"),
                                             ],
                                             spacing=20,
                                         ),
-                                        value="OpenAI Whisper",
+                                        value="MS Word Online",
                                         on_change=lambda e: set_transcription_mode(e.control.value),
                                     ),
                                 ],
