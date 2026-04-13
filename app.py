@@ -1405,7 +1405,17 @@ def main(page: ft.Page):
                         ft.Text("1. Review the transcription in the Transcribe pane"),
                         ft.Text("2. Edit speaker names (replace 'Speaker 1' with actual names)"),
                         ft.Text("3. Fix any transcription errors"),
-                        ft.Text("4. When satisfied, click 'Add to document' at bottom of pane"),
+                        ft.Text(
+                            "4. ⚠️  CRITICAL: Click 'Add to document' → choose 'With Speakers and Timestamps'",
+                            weight=ft.FontWeight.BOLD,
+                            color=ft.Colors.RED_700,
+                        ),
+                        ft.Text(
+                            "    Choosing 'With Speakers and Timestamps' is required for speaker labels and timing to be preserved in the DOCX file.",
+                            size=12,
+                            italic=True,
+                            color=ft.Colors.GREY_700,
+                        ),
                         
                         ft.Divider(height=15),
                         
@@ -1956,6 +1966,7 @@ def main(page: ft.Page):
                                 'vtt': (dir_path / f"{dg_name}.vtt").exists(),
                                 'csv': (dir_path / f"{dg_name}.csv").exists(),
                                 'pdf': (dir_path / f"{dg_name}.pdf").exists(),
+                                'notes': (dir_path / "review_notes.md").exists(),
                             }
             
             # Calculate statistics
@@ -1974,6 +1985,7 @@ def main(page: ft.Page):
             vtt_count = sum(1 for f in processed_files.values() if f['vtt'])
             csv_count = sum(1 for f in processed_files.values() if f['csv'])
             pdf_count = sum(1 for f in processed_files.values() if f['pdf'])
+            notes_count = sum(1 for f in processed_files.values() if f['notes'])
             
             # Generate report content
             timestamp = datetime.now()
@@ -2023,6 +2035,7 @@ This report tracks the processing status of audio files from the input directory
 | VTT Outputs | {vtt_count}/{total_processed if total_processed > 0 else 1} | {vtt_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 | CSV Outputs | {csv_count}/{total_processed if total_processed > 0 else 1} | {csv_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 | PDF Outputs | {pdf_count}/{total_processed if total_processed > 0 else 1} | {pdf_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
+| Review Notes | {notes_count}/{total_processed if total_processed > 0 else 1} | {notes_count/total_processed*100 if total_processed > 0 else 0:.0f}% |
 
 ---
 
@@ -2037,8 +2050,10 @@ This report tracks the processing status of audio files from the input directory
             if complete_files:
                 report_content += f"### ✅ Complete ({len(complete_files)} files)\n\n"
                 for name, info in complete_files:
+                    notes_indicator = "✅" if info['notes'] else "—"
                     report_content += f"**{name}** (`{info['dg_name']}`)  \n"
                     report_content += f"- ✅ MP3, JSON, TXT, VTT, CSV, PDF\n"
+                    report_content += f"- Review Notes: {notes_indicator}\n"
                     report_content += f"- Location: `{info['directory'].name}`\n\n"
             
             # Add in-progress files
@@ -2057,8 +2072,10 @@ This report tracks the processing status of audio files from the input directory
                     if not info['csv']: missing.append('CSV')
                     if not info['pdf']: missing.append('PDF')
                     
+                    notes_indicator = "✅" if info['notes'] else "—"
                     report_content += f"**{name}** (`{info['dg_name']}`)  \n"
                     report_content += f"- Missing: {', '.join(missing)}\n"
+                    report_content += f"- Review Notes: {notes_indicator}\n"
                     report_content += f"- Location: `{info['directory'].name}`\n\n"
             
             # Add unprocessed files

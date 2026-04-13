@@ -60,7 +60,9 @@ The function displays instructions for this multi-step workflow:
 - Review the transcription in the Transcribe pane
 - Edit speaker names (replace "Speaker 1" with actual names)
 - Fix any transcription errors
-- Add the transcript to your document
+- **⚠️  CRITICAL: Click 'Add to document' → select 'With Speakers and Timestamps'**
+  - This option is required to preserve speaker labels and timestamps in the DOCX file
+  - Using plain 'Add to document' (without speakers/timestamps) will produce a file the converter cannot parse correctly
 
 ### STEP 5: Save as DOCX
 - Click the File menu in Word
