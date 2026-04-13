@@ -19,6 +19,7 @@ logfiles/
 dist/
 build/
 *.egg-info/
+*.dmg
 
 # OS files
 .DS_Store

@@ -92,6 +92,8 @@ Choose between two transcription methods:
 
 ## Setup
 
+### Running from Source (developers / contributors)
+
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
@@ -107,6 +109,10 @@ Choose between two transcription methods:
    - Create a Python virtual environment (`.venv`)
    - Install all dependencies from `python_requirements.txt`
    - Launch the OHW application
+
+### Installing from DMG (end users)
+
+See [Distribution & DMG](#distribution--dmg) below for pre-built installer instructions.
 
 ## Requirements
 
@@ -292,6 +298,68 @@ brew install ffmpeg
 ### PDF Generation Fails
 - Ensure `reportlab` is installed: `pip install reportlab`
 - Check that output directory exists and is writable
+
+## Distribution & DMG
+
+### Prerequisites for recipients
+Recipients need these installed once before using OHW:
+- **Python 3** — [python.org/downloads](https://python.org/downloads) or `brew install python`
+- **FFmpeg** — `brew install ffmpeg`
+- **Homebrew** (recommended) — [brew.sh](https://brew.sh)
+
+### Building the DMG
+
+Run the build script from the project root. An optional version argument defaults to `1.0`:
+
+```bash
+bash build_dmg.sh          # produces OHW_v1.0.dmg
+bash build_dmg.sh 1.2      # produces OHW_v1.2.dmg
+```
+
+The script:
+1. Creates a macOS `.app` bundle (`OHW.app`) with a shell launcher
+2. Bundles all source files into `OHW.app/Contents/Resources/src/`
+3. Excludes `.venv`, `.git`, `.env`, log files, and any existing DMGs
+4. Compresses everything into `OHW_v<version>.dmg` using the built-in `hdiutil` — no extra tools required
+
+The resulting DMG is ~80 KB. Dependency installation happens on the recipient's machine at first launch.
+
+### Installing from the DMG
+
+1. Open `OHW_v<version>.dmg`
+2. Drag **OHW.app** to your Applications folder (or any convenient location)
+3. Eject the DMG
+
+### First launch (Gatekeeper)
+
+Because the app is not code-signed, macOS Gatekeeper will block a plain double-click the first time:
+
+1. **Right-click** `OHW.app` → **Open**
+2. Click **Open** in the confirmation dialog
+3. Subsequent launches work with a normal double-click
+
+> **Alternative:** System Settings → Privacy & Security → scroll to the blocked-app notice → click **Open Anyway**
+
+### What happens on first launch
+
+A Terminal window opens and automatically:
+- Creates a Python virtual environment inside the app bundle
+- Installs all Python dependencies (may take a few minutes on first run)
+- Launches the OHW window when setup is complete
+
+The Terminal window can be left open or minimised; closing it will also close OHW.
+
+### Subsequent launches
+
+Dependencies are cached in the virtual environment; startup is fast after the first run.
+
+### Notes
+
+- Generated DMG files are excluded from version control via `.gitignore`
+- The `.env` file (containing `HF_TOKEN`) is intentionally **not** bundled for security reasons — recipients who need speaker diarization must create their own `.env` in the app's `src/` directory after installation
+- The app's `src/` directory (`OHW.app/Contents/Resources/src/`) can be opened in Finder to access or edit source files directly
+
+---
 
 ## Development
 
