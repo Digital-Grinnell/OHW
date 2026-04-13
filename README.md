@@ -28,8 +28,13 @@ Choose between two transcription methods:
 - Includes **automated DOCX to JSON conversion** with button click
 - Automatically maps Word speaker labels to your custom speaker names
 
-### Function 3: [Future Function]
-Placeholder for additional processing capabilities
+### Function 3: Edit Review Notes
+- Opens an in-app Markdown editor for the selected oral history
+- Creates `review_notes.md` in the file's output directory if it doesn't exist
+- Seeds new files with a template (title, filename, date, blank Notes section)
+- **Save** writes the file and closes the dialog; write errors are shown inline
+- **Cancel** closes without saving any changes
+- File lives alongside all other per-file outputs in `<basename> - dg_<epoch>/`
 
 ### Function 4: Generate TXT, VTT, CSV & PDF from JSON
 - Reads edited JSON transcript (from Function 2)
@@ -71,6 +76,13 @@ Placeholder for additional processing capabilities
 - Choice persists during session
 - Help documentation adapts to selected mode
 - Seamless switching between Whisper and MS Word workflows
+
+### Working/Output Directory
+- **User-selectable** output location separate from the input directory
+- Defaults to the same directory chosen as the Input Directory
+- An `OHW-data` subfolder is automatically created inside the chosen directory
+- Changing the Input Directory auto-updates the working/output directory unless it has been manually set
+- Selection persists across sessions
 
 ### Help Mode
 - **Built-in help documentation** for each function
@@ -127,6 +139,12 @@ All dependencies are installed automatically by `run.sh`:
    - Click "List WAV and MP3 Files" to scan
    - Select an audio file from the dropdown
 
+1a. **Set Working/Output Directory** (optional)
+   - Defaults to the same directory as the Input Directory
+   - An `OHW-data` subfolder is created there automatically
+   - Override with Browse… to write outputs to a different location (e.g., an external drive)
+   - The setting persists across sessions
+
 2. **Convert Audio** (if needed)
    - If you have WAV files, run **Function 1** to convert to MP3
    - MP3s are required for cloud transcription services
@@ -160,17 +178,22 @@ All dependencies are installed automatically by `run.sh`:
    - All formats include timestamps and speaker labels
    - PDF opens with a descriptive title and provenance section
 
-8. **Track Progress** (Optional)
+8. **Add Review Notes** (Optional)
+   - Run **Function 3** to open the Markdown review notes editor
+   - Records observations, corrections, or follow-up items for the oral history
+   - Saved as `review_notes.md` in the file's output directory
+
+9. **Track Progress** (Optional)
    - Run **Function 5** to generate progress report
    - Review what's complete and what needs work
-   - Reports saved with timestamps in `~/OHW-data/`
+   - Reports saved with timestamps in the working/output directory
 
 ## Output Structure
 
-All processed files are organized in directories under `~/OHW-data/`:
+All processed files are organized inside an `OHW-data` subfolder within the **Working/Output Directory** you select (defaults to the Input Directory):
 
 ```
-~/OHW-data/
+<working_dir>/OHW-data/
 ├── <basename> - dg_<epoch>/
 │   ├── dg_<epoch>.wav          # Original or converted audio
 │   ├── dg_<epoch>.mp3          # Compressed audio
@@ -178,9 +201,12 @@ All processed files are organized in directories under `~/OHW-data/`:
 │   ├── dg_<epoch>.txt          # Plain text output
 │   ├── dg_<epoch>.vtt          # Video subtitle format
 │   ├── dg_<epoch>.csv          # Spreadsheet-friendly output
-│   └── dg_<epoch>.pdf          # Formatted document with provenance
+│   ├── dg_<epoch>.pdf          # Formatted document with provenance
+│   └── review_notes.md         # Reviewer notes (Function 3)
 └── workflow_progress_YYYYMMDD_HHMMSS.md  # Progress reports
 ```
+
+> **Note:** Application logs and the persistent settings file remain in `~/OHW-data/` regardless of the Working/Output Directory selection.
 
 ### File Formats
 
@@ -233,6 +259,7 @@ Each function has detailed help documentation accessible via Help Mode:
 - **FUNCTION_1_WAV_TO_MP3.md** - Audio conversion guide
 - **FUNCTION_2A_TRANSCRIBE_WHISPER.md** - Whisper transcription guide
 - **FUNCTION_2B_MS_WORD_ONLINE.md** - MS Word Online guide
+- **FUNCTION_3_REVIEW_NOTES.md** - Review notes editor guide
 - **FUNCTION_4_GENERATE_OUTPUTS.md** - Output generation guide
 - **FUNCTION_5_REPORT_PROGRESS.md** - Progress reporting guide
 
@@ -260,6 +287,7 @@ brew install ffmpeg
 - Ensure you have an active Microsoft 365 subscription
 - Word Online transcription requires < 200MB audio files
 - Use Function 1 to convert/compress large files first
+- Microsoft imposes a **300-minute-per-month** transcription limit; if exceeded, the Transcribe pane will be unavailable until the limit resets
 
 ### PDF Generation Fails
 - Ensure `reportlab` is installed: `pip install reportlab`

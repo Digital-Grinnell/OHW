@@ -97,6 +97,7 @@ class PersistentStorage:
                 "last_wav_dir": "",
                 "last_mp3_dir": "",
                 "last_input_dir": "",
+                "last_output_dir": "",
                 "window_left": None,
                 "window_top": None,
             },
@@ -278,14 +279,30 @@ def main(page: ft.Page):
     output_directory: Path | None = None  # Directory for current file's outputs
     current_epoch: int | None = None  # Epoch timestamp for current file
 
-    # Directory picker
+    # output_base_dir: the parent of all per-file output directories.
+    # Mirrors <working_dir>/OHW-data and defaults to DATA_DIR until the user picks differently.
+    output_base_dir: Path = DATA_DIR
+    output_dir_customized: bool = False  # True once user manually picks a working directory
+
+    # Directory pickers
     directory_picker = ft.FilePicker()
+    output_directory_picker = ft.FilePicker()
     page.overlay.append(directory_picker)
+    page.overlay.append(output_directory_picker)
 
     # Input directory text field
     input_directory_field = ft.TextField(
         label="Input Directory",
         hint_text="Select a directory containing WAV/MP3 files",
+        width=600,
+        read_only=True,
+        value=""
+    )
+
+    # Working/Output directory text field
+    output_directory_field = ft.TextField(
+        label="Working/Output Directory",
+        hint_text="Defaults to Input Directory; OHW-data subfolder created here",
         width=600,
         read_only=True,
         value=""
@@ -299,17 +316,27 @@ def main(page: ft.Page):
         options=[],
     )
 
-    # Initialize with last used directory
+    # Initialize with last used input directory
     last_dir = storage.get_ui_state("last_input_dir")
     if last_dir and os.path.isdir(last_dir):
         current_directory = Path(last_dir)
         input_directory_field.value = str(current_directory)
 
+    # Initialize working/output directory from persistence (fallback to input dir)
+    last_output_dir = storage.get_ui_state("last_output_dir")
+    if last_output_dir and os.path.isdir(last_output_dir):
+        output_base_dir = Path(last_output_dir) / "OHW-data"
+        output_directory_field.value = last_output_dir
+        output_dir_customized = True
+    elif current_directory:
+        output_base_dir = current_directory / "OHW-data"
+        output_directory_field.value = str(current_directory)
+
     # -------------------------------------------------------- input handlers
 
     def on_directory_picked(e: ft.FilePickerResultEvent):
-        """Called when user selects a directory."""
-        nonlocal current_directory, audio_files
+        """Called when user selects an input directory."""
+        nonlocal current_directory, audio_files, output_base_dir
         if not e.path:
             add_log_message("Directory selection cancelled")
             return
@@ -317,23 +344,63 @@ def main(page: ft.Page):
         current_directory = Path(e.path)
         input_directory_field.value = str(current_directory)
         storage.set_ui_state("last_input_dir", str(current_directory))
-        
+
+        # Auto-sync working/output directory when user hasn't manually customised it
+        if not output_dir_customized:
+            output_base_dir = current_directory / "OHW-data"
+            output_directory_field.value = str(current_directory)
+            os.makedirs(output_base_dir, exist_ok=True)
+
         # Clear file list
         audio_files = []
         file_selection_dropdown.options = []
         file_selection_dropdown.value = None
-        
+
         add_log_message(f"Directory selected: {current_directory}")
         update_status(f"Directory: {current_directory.name}")
         page.update()
 
     directory_picker.on_result = on_directory_picked
 
+    def on_output_directory_picked(e: ft.FilePickerResultEvent):
+        """Called when user selects a working/output directory."""
+        nonlocal output_base_dir, output_dir_customized
+        if not e.path:
+            add_log_message("Working/Output directory selection cancelled")
+            return
+
+        selected = Path(e.path)
+        output_base_dir = selected / "OHW-data"
+        os.makedirs(output_base_dir, exist_ok=True)
+        output_directory_field.value = str(selected)
+        storage.set_ui_state("last_output_dir", str(selected))
+        output_dir_customized = True
+
+        add_log_message(f"Working/Output Directory: {selected}")
+        add_log_message(f"OHW-data folder: {output_base_dir}")
+        update_status(f"Output: {selected.name}/OHW-data")
+        page.update()
+
+    output_directory_picker.on_result = on_output_directory_picked
+
     def on_pick_directory_click(e):
-        """Open directory picker."""
+        """Open directory picker for input directory."""
         initial_dir = storage.get_ui_state("last_input_dir") or str(Path.home())
         directory_picker.get_directory_path(
             dialog_title="Select directory containing audio files",
+            initial_directory=initial_dir if os.path.isdir(initial_dir) else None,
+        )
+
+    def on_pick_output_directory_click(e):
+        """Open directory picker for working/output directory."""
+        # Start in last output dir, or last input dir, or home
+        initial_dir = (
+            storage.get_ui_state("last_output_dir")
+            or storage.get_ui_state("last_input_dir")
+            or str(Path.home())
+        )
+        output_directory_picker.get_directory_path(
+            dialog_title="Select working/output directory (OHW-data subfolder will be created here)",
             initial_directory=initial_dir if os.path.isdir(initial_dir) else None,
         )
 
@@ -413,7 +480,7 @@ def main(page: ft.Page):
                     return
             
             # File is not in an output directory, search for one based on basename
-            existing_dirs = list(DATA_DIR.glob(f"{basename} - dg_*"))
+            existing_dirs = list(output_base_dir.glob(f"{basename} - dg_*"))
             
             if existing_dirs:
                 # Reuse the first matching directory
@@ -434,7 +501,7 @@ def main(page: ft.Page):
                     epoch = int(time.time())
                     current_epoch = epoch
                     dirname = f"{basename} - dg_{epoch}"
-                    output_directory = DATA_DIR / dirname
+                    output_directory = output_base_dir / dirname
                     try:
                         output_directory.mkdir(parents=True, exist_ok=True)
                         add_log_message(f"File selected: {selected_file.name}")
@@ -453,7 +520,7 @@ def main(page: ft.Page):
                 epoch = int(time.time())
                 current_epoch = epoch
                 dirname = f"{basename} - dg_{epoch}"
-                output_directory = DATA_DIR / dirname
+                output_directory = output_base_dir / dirname
                 
                 try:
                     output_directory.mkdir(parents=True, exist_ok=True)
@@ -1869,8 +1936,8 @@ def main(page: ft.Page):
             
             # Scan OHW-data for processed files
             processed_files = {}
-            if DATA_DIR.exists():
-                for dir_path in DATA_DIR.iterdir():
+            if output_base_dir.exists():
+                for dir_path in output_base_dir.iterdir():
                     if dir_path.is_dir() and ' - dg_' in dir_path.name:
                         # Extract basename and epoch from directory name
                         parts = dir_path.name.split(' - dg_')
@@ -1920,7 +1987,7 @@ def main(page: ft.Page):
 This report tracks the processing status of audio files from the input directory through the OHW workflow.
 
 **Input Directory:** `{current_directory}`  
-**Output Directory:** `{DATA_DIR}`
+**Output Directory:** `{output_base_dir}`
 
 ## Workflow Stages
 
@@ -2024,14 +2091,14 @@ For each audio file:
             
             # Save report with timestamp
             report_filename = f"workflow_progress_{timestamp.strftime('%Y%m%d_%H%M%S')}.md"
-            report_path = DATA_DIR / report_filename
+            report_path = output_base_dir / report_filename
             
             with open(report_path, 'w', encoding='utf-8') as f:
                 f.write(report_content)
             
             success_msg = f"✅ Progress report generated: {report_filename}"
             add_log_message(success_msg)
-            add_log_message(f"  Saved to: {DATA_DIR}")
+            add_log_message(f"  Saved to: {output_base_dir}")
             add_log_message(f"  Found {total_input} input files, {total_processed} processed")
             update_status(success_msg)
             
@@ -2042,6 +2109,122 @@ For each audio file:
             logger.error(f"Report generation error: {str(ex)}")
         
         page.update()
+
+    def on_function_3_review_notes(e):
+        """Function 3: Create or edit a review_notes.md file for the selected oral history."""
+        nonlocal selected_file, output_directory
+
+        if not selected_file:
+            update_status("Please select an audio file first", is_error=True)
+            add_log_message("No file selected. Use Inputs section to select a file first.")
+            return
+
+        if not output_directory or not output_directory.exists():
+            update_status("Output directory not found. Please reselect the file.", is_error=True)
+            add_log_message("Output directory missing. Reselect the file to recreate it.")
+            return
+
+        notes_path = output_directory / "review_notes.md"
+
+        # Load existing content or seed with a template
+        if notes_path.exists():
+            try:
+                existing_content = notes_path.read_text(encoding="utf-8")
+            except Exception as ex:
+                existing_content = ""
+                add_log_message(f"⚠️  Could not read existing review notes: {ex}")
+        else:
+            existing_content = (
+                f"# Review Notes\n"
+                f"**File:** {selected_file.name}  \n"
+                f"**Date:** {datetime.now().strftime('%B %d, %Y')}  \n\n"
+                f"## Notes\n\n"
+                f"_Enter your review notes here._\n"
+            )
+
+        storage.record_function_usage("function_3_review_notes")
+
+        # Editor widget
+        editor = ft.TextField(
+            multiline=True,
+            min_lines=20,
+            max_lines=30,
+            value=existing_content,
+            text_size=13,
+            border_color=ft.Colors.GREY_400,
+            bgcolor=ft.Colors.WHITE,
+            expand=True,
+        )
+
+        save_status = ft.Text("", size=12, italic=True, color=ft.Colors.GREY_700)
+
+        def do_save(ev):
+            try:
+                notes_path.write_text(editor.value or "", encoding="utf-8")
+                save_status.value = f"✅ Saved: {notes_path.name}"
+                save_status.color = ft.Colors.GREEN_700
+                add_log_message(f"✅ Review notes saved: {notes_path}")
+                update_status(f"Review notes saved for {selected_file.name}")
+                page.update()
+            except Exception as ex:
+                save_status.value = f"❌ Save failed: {ex}"
+                save_status.color = ft.Colors.RED_600
+                add_log_message(f"❌ Failed to save review notes: {ex}")
+                page.update()
+
+        def do_save_close(ev):
+            do_save(ev)
+            if "❌" not in (save_status.value or ""):
+                notes_dialog.open = False
+                page.update()
+
+        def do_cancel(ev):
+            notes_dialog.open = False
+            page.update()
+
+        notes_dialog = ft.AlertDialog(
+            modal=True,
+            title=ft.Text(
+                f"📋 Review Notes — {selected_file.name}",
+                weight=ft.FontWeight.BOLD,
+            ),
+            content=ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            f"Editing: {notes_path}",
+                            size=11,
+                            color=ft.Colors.GREY_600,
+                            italic=True,
+                        ),
+                        ft.Container(height=6),
+                        editor,
+                        ft.Container(height=4),
+                        save_status,
+                    ],
+                    spacing=0,
+                    tight=True,
+                ),
+                width=820,
+                height=560,
+                padding=10,
+            ),
+            actions=[
+                ft.ElevatedButton(
+                    "Save",
+                    icon=ft.Icons.SAVE,
+                    on_click=do_save_close,
+                ),
+                ft.TextButton("Cancel", on_click=do_cancel),
+            ],
+            actions_alignment=ft.MainAxisAlignment.END,
+        )
+
+        page.overlay.append(notes_dialog)
+        notes_dialog.open = True
+        page.update()
+        add_log_message(f"📋 Opened review notes editor for {selected_file.name}")
+        update_status(f"Editing review notes for {selected_file.name}")
 
     def on_placeholder_function(e):
         """Placeholder for future functions"""
@@ -2082,7 +2265,7 @@ For each audio file:
         "function_0_merge_audio",
         "function_1_wav_to_mp3",
         "function_2_transcribe",
-        "function_3_placeholder",
+        "function_3_review_notes",
         "function_4_generate_outputs",
         "function_5_report_progress",
     ]
@@ -2106,11 +2289,11 @@ For each audio file:
             "handler": on_function_2_transcribe,
             "help_file": None  # Mode-dependent, shown in handler
         },
-        "function_3_placeholder": {
-            "label": "3: [Future Function]",
-            "icon": "⏳",
-            "handler": on_placeholder_function,
-            "help_file": None
+        "function_3_review_notes": {
+            "label": "3: Edit Review Notes",
+            "icon": "📋",
+            "handler": on_function_3_review_notes,
+            "help_file": "FUNCTION_3_REVIEW_NOTES.md"
         },
         "function_4_generate_outputs": {
             "label": "4: Generate TXT, VTT, CSV & PDF from JSON",
@@ -2124,6 +2307,7 @@ For each audio file:
             "handler": on_function_5_report_progress,
             "help_file": "FUNCTION_5_REPORT_PROGRESS.md"
         },
+
     }
 
     # Help Mode checkbox state
@@ -2630,6 +2814,28 @@ For each audio file:
                                     ),
                                 ],
                                 spacing=10,
+                            ),
+                            ft.Text(
+                                "Working/Output Directory",
+                                size=14,
+                                weight=ft.FontWeight.W_500,
+                            ),
+                            ft.Row(
+                                [
+                                    output_directory_field,
+                                    ft.ElevatedButton(
+                                        "Browse...",
+                                        icon=ft.Icons.FOLDER_OPEN,
+                                        on_click=on_pick_output_directory_click,
+                                    ),
+                                ],
+                                spacing=10,
+                            ),
+                            ft.Text(
+                                "An 'OHW-data' subfolder will be created inside the selected working/output directory.",
+                                size=11,
+                                italic=True,
+                                color=ft.Colors.GREY_600,
                             ),
                             ft.ElevatedButton(
                                 "List WAV and MP3 Files",
