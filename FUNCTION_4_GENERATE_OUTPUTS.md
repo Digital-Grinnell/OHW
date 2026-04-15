@@ -11,7 +11,7 @@ Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transc
 ## Usage
 
 1. **First, run Function 2a or Function 2b** to create the initial JSON transcript
-2. **Edit the JSON file** located in `~/OHW-data/<basename> - dg_<epoch>/dg_<epoch>_transcript.json`:
+2. **Edit the JSON file** located in `~/OHM-data/<basename> - dg_<epoch>/dg_<epoch>_transcript.json`:
    - Change speaker labels (e.g., `"speaker": "SPEAKER_00"` → `"speaker": "John Doe"`)
    - Fix transcription errors in the `"text"` fields
    - Correct spelling and punctuation
@@ -31,12 +31,12 @@ Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transc
 Files are generated in the same output directory as other processing:
 
 ```
-~/OHW-data/<basename> - dg_<epoch>/
+~/OHM-data/<basename> - dg_<epoch>/
 ```
 
 For example:
 ```
-~/OHW-data/interview_john_doe - dg_1712345678/
+~/OHM-data/interview_john_doe - dg_1712345678/
   ├── dg_1712345678.wav                  (from Function 1)
   ├── dg_1712345678.mp3                  (from Function 1)
   ├── dg_1712345678_transcript.json      (from Function 2a/2b, YOU EDIT THIS)
@@ -115,7 +115,7 @@ Here's what the JSON structure looks like (simplified):
     "narrative": "Human-readable provenance paragraph …",
     "created_at": "2026-04-07 14:24:13",
     "transcription_method": "MS Word Online (manual transcription)",
-    "app": "OHW — Oral History Workflow",
+    "app": "OHM — Oral History Manager",
     "speaker_mapping": {
       "Interviewer": "Interviewer",
       "Speaker 1": "Jane Smith",

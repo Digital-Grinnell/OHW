@@ -42,12 +42,12 @@ Transcribe MP3 audio files to text using OpenAI Whisper, generating a clean segm
 The transcription outputs are saved to the same output directory as other file processing:
 
 ```
-~/OHW-data/<basename> - dg_<epoch>/
+~/OHM-data/<basename> - dg_<epoch>/
 ```
 
 For example, selecting `interview_john_doe.mp3` will use or create:
 ```
-~/OHW-data/interview_john_doe - dg_1712345678/
+~/OHM-data/interview_john_doe - dg_1712345678/
 ```
 
 ## Output Files

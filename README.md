@@ -1,6 +1,6 @@
-# OHW - Oral History Workflow
+# OHM - Oral History Manager
 
-OHW is a desktop application built with Flet that streamlines the creation and processing of oral history recordings for Digital.Grinnell. The application provides an integrated workflow from audio conversion through transcription to final deliverables.
+OHM is a desktop application built with Flet that streamlines the creation and processing of oral history recordings for Digital.Grinnell. The application provides an integrated workflow from audio conversion through transcription to final deliverables.
 
 ## Features
 
@@ -51,7 +51,7 @@ Choose between two transcription methods:
   - Professional formatting
 
 ### Function 5: Report Workflow Progress
-- Scans input directory and OHW-data for status comparison
+- Scans input directory and OHM-data for status comparison
 - Generates timestamped markdown reports
 - Tracks completion across all workflow stages
 - Identifies:
@@ -80,7 +80,7 @@ Choose between two transcription methods:
 ### Working/Output Directory
 - **User-selectable** output location separate from the input directory
 - Defaults to the same directory chosen as the Input Directory
-- An `OHW-data` subfolder is automatically created inside the chosen directory
+- An `OHM-data` subfolder is automatically created inside the chosen directory
 - Changing the Input Directory auto-updates the working/output directory unless it has been manually set
 - Selection persists across sessions
 
@@ -97,7 +97,7 @@ Choose between two transcription methods:
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd OHW
+   cd OHM
    ```
 
 2. **Run the application**
@@ -108,7 +108,7 @@ Choose between two transcription methods:
    This script will:
    - Create a Python virtual environment (`.venv`)
    - Install all dependencies from `python_requirements.txt`
-   - Launch the OHW application
+   - Launch the OHM application
 
 ### Installing from DMG (end users)
 
@@ -147,7 +147,7 @@ All dependencies are installed automatically by `run.sh`:
 
 1a. **Set Working/Output Directory** (optional)
    - Defaults to the same directory as the Input Directory
-   - An `OHW-data` subfolder is created there automatically
+   - An `OHM-data` subfolder is created there automatically
    - Override with Browse… to write outputs to a different location (e.g., an external drive)
    - The setting persists across sessions
 
@@ -196,10 +196,10 @@ All dependencies are installed automatically by `run.sh`:
 
 ## Output Structure
 
-All processed files are organized inside an `OHW-data` subfolder within the **Working/Output Directory** you select (defaults to the Input Directory):
+All processed files are organized inside an `OHM-data` subfolder within the **Working/Output Directory** you select (defaults to the Input Directory):
 
 ```
-<working_dir>/OHW-data/
+<working_dir>/OHM-data/
 ├── <basename> - dg_<epoch>/
 │   ├── dg_<epoch>.wav          # Original or converted audio
 │   ├── dg_<epoch>.mp3          # Compressed audio
@@ -212,7 +212,7 @@ All processed files are organized inside an `OHW-data` subfolder within the **Wo
 └── workflow_progress_YYYYMMDD_HHMMSS.md  # Progress reports
 ```
 
-> **Note:** Application logs and the persistent settings file remain in `~/OHW-data/` regardless of the Working/Output Directory selection.
+> **Note:** Application logs and the persistent settings file remain in `~/OHM-data/` regardless of the Working/Output Directory selection.
 
 ### File Formats
 
@@ -223,7 +223,7 @@ All processed files are organized inside an `OHW-data` subfolder within the **Wo
     "narrative": "Human-readable provenance paragraph …",
     "created_at": "2026-04-07 14:24:13",
     "transcription_method": "MS Word Online (manual transcription)",
-    "app": "OHW — Oral History Workflow",
+    "app": "OHM — Oral History Manager",
     "system": { "hostname": "…", "os_name": "Darwin", "machine": "arm64" },
     "speaker_mapping": {
       "Interviewer": "Interviewer",
@@ -302,7 +302,7 @@ brew install ffmpeg
 ## Distribution & DMG
 
 ### Prerequisites for recipients
-Recipients need these installed once before using OHW:
+Recipients need these installed once before using OHM:
 - **Python 3** — [python.org/downloads](https://python.org/downloads) or `brew install python`
 - **FFmpeg** — `brew install ffmpeg`
 - **Homebrew** (recommended) — [brew.sh](https://brew.sh)
@@ -312,29 +312,29 @@ Recipients need these installed once before using OHW:
 Run the build script from the project root. An optional version argument defaults to `1.0`:
 
 ```bash
-bash build_dmg.sh          # produces OHW_v1.0.dmg
-bash build_dmg.sh 1.2      # produces OHW_v1.2.dmg
+bash build_dmg.sh          # produces OHM_v1.0.dmg
+bash build_dmg.sh 1.2      # produces OHM_v1.2.dmg
 ```
 
 The script:
-1. Creates a macOS `.app` bundle (`OHW.app`) with a shell launcher
-2. Bundles all source files into `OHW.app/Contents/Resources/src/`
+1. Creates a macOS `.app` bundle (`OHM.app`) with a shell launcher
+2. Bundles all source files into `OHM.app/Contents/Resources/src/`
 3. Excludes `.venv`, `.git`, `.env`, log files, and any existing DMGs
-4. Compresses everything into `OHW_v<version>.dmg` using the built-in `hdiutil` — no extra tools required
+4. Compresses everything into `OHM_v<version>.dmg` using the built-in `hdiutil` — no extra tools required
 
 The resulting DMG is ~80 KB. Dependency installation happens on the recipient's machine at first launch.
 
 ### Installing from the DMG
 
-1. Open `OHW_v<version>.dmg`
-2. Drag **OHW.app** to your Applications folder (or any convenient location)
+1. Open `OHM_v<version>.dmg`
+2. Drag **OHM.app** to your Applications folder (or any convenient location)
 3. Eject the DMG
 
 ### First launch (Gatekeeper)
 
 Because the app is not code-signed, macOS Gatekeeper will block a plain double-click the first time:
 
-1. **Right-click** `OHW.app` → **Open**
+1. **Right-click** `OHM.app` → **Open**
 2. Click **Open** in the confirmation dialog
 3. Subsequent launches work with a normal double-click
 
@@ -345,9 +345,9 @@ Because the app is not code-signed, macOS Gatekeeper will block a plain double-c
 A Terminal window opens and automatically:
 - Creates a Python virtual environment inside the app bundle
 - Installs all Python dependencies (may take a few minutes on first run)
-- Launches the OHW window when setup is complete
+- Launches the OHM window when setup is complete
 
-The Terminal window can be left open or minimised; closing it will also close OHW.
+The Terminal window can be left open or minimised; closing it will also close OHM.
 
 ### Subsequent launches
 
@@ -357,7 +357,7 @@ Dependencies are cached in the virtual environment; startup is fast after the fi
 
 - Generated DMG files are excluded from version control via `.gitignore`
 - The `.env` file (containing `HF_TOKEN`) is intentionally **not** bundled for security reasons — recipients who need speaker diarization must create their own `.env` in the app's `src/` directory after installation
-- The app's `src/` directory (`OHW.app/Contents/Resources/src/`) can be opened in Finder to access or edit source files directly
+- The app's `src/` directory (`OHM.app/Contents/Resources/src/`) can be opened in Finder to access or edit source files directly
 
 ---
 
@@ -373,7 +373,7 @@ The application uses:
 ### Log Files
 Application logs are stored in:
 ```
-~/OHW-data/logfiles/ohw_YYYYMMDD_HHMMSS.log
+~/OHM-data/logfiles/ohm_YYYYMMDD_HHMMSS.log
 ```
 
 ## License

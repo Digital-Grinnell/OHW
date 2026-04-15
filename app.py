@@ -1,5 +1,5 @@
 """
-OHW - Oral History Workflow
+OHM - Oral History Manager
 A Flet UI app designed to streamline the oral history recording and ingest workflow
 for Digital.Grinnell, including WAV-to-MP3 conversion and future processing steps.
 """
@@ -49,9 +49,9 @@ except ImportError:
     logger.warning("Transcription libraries not available. Install with: pip install openai-whisper torch torchaudio")
 
 # Configure logging
-DATA_DIR = Path.home() / "OHW-data"
+DATA_DIR = Path.home() / "OHM-data"
 os.makedirs(DATA_DIR / "logfiles", exist_ok=True)
-log_filename = DATA_DIR / "logfiles" / f"ohw_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+log_filename = DATA_DIR / "logfiles" / f"ohm_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 file_handler = logging.FileHandler(log_filename)
 file_handler.setLevel(logging.DEBUG)
@@ -231,14 +231,14 @@ def convert_wav_to_mp3(
 
 
 def main(page: ft.Page):
-    page.title = "OHW - Oral History Workflow"
+    page.title = "OHM - Oral History Manager"
     page.padding = 20
     page.window.width = 1400
     page.window.height = 950
     page.scroll = ft.ScrollMode.AUTO
 
     storage = PersistentStorage()
-    logger.info("OHW application started")
+    logger.info("OHM application started")
 
     # ------------------------------------------------------------------ helpers
 
@@ -283,7 +283,7 @@ def main(page: ft.Page):
     current_epoch: int | None = None  # Epoch timestamp for current file
 
     # output_base_dir: the parent of all per-file output directories.
-    # Mirrors <working_dir>/OHW-data and defaults to DATA_DIR until the user picks differently.
+    # Mirrors <working_dir>/OHM-data and defaults to DATA_DIR until the user picks differently.
     output_base_dir: Path = DATA_DIR
     output_dir_customized: bool = False  # True once user manually picks a working directory
 
@@ -309,7 +309,7 @@ def main(page: ft.Page):
     # Working/Output directory text field
     output_directory_field = ft.TextField(
         label="Working/Output Directory",
-        hint_text="Defaults to Input Directory; OHW-data subfolder created here",
+        hint_text="Defaults to Input Directory; OHM-data subfolder created here",
         width=600,
         read_only=True,
         value=""
@@ -386,11 +386,11 @@ def main(page: ft.Page):
     # Initialize working/output directory from persistence (fallback to input dir)
     last_output_dir = storage.get_ui_state("last_output_dir")
     if last_output_dir and os.path.isdir(last_output_dir):
-        output_base_dir = Path(last_output_dir) / "OHW-data"
+        output_base_dir = Path(last_output_dir) / "OHM-data"
         output_directory_field.value = last_output_dir
         output_dir_customized = True
     elif current_directory:
-        output_base_dir = current_directory / "OHW-data"
+        output_base_dir = current_directory / "OHM-data"
         output_directory_field.value = str(current_directory)
 
     # -------------------------------------------------------- input handlers
@@ -408,7 +408,7 @@ def main(page: ft.Page):
 
         # Auto-sync working/output directory when user hasn't manually customised it
         if not output_dir_customized:
-            output_base_dir = current_directory / "OHW-data"
+            output_base_dir = current_directory / "OHM-data"
             output_directory_field.value = str(current_directory)
             os.makedirs(output_base_dir, exist_ok=True)
 
@@ -439,15 +439,15 @@ def main(page: ft.Page):
             return
 
         selected = Path(e.path)
-        output_base_dir = selected / "OHW-data"
+        output_base_dir = selected / "OHM-data"
         os.makedirs(output_base_dir, exist_ok=True)
         output_directory_field.value = str(selected)
         storage.set_ui_state("last_output_dir", str(selected))
         output_dir_customized = True
 
         add_log_message(f"Working/Output Directory: {selected}")
-        add_log_message(f"OHW-data folder: {output_base_dir}")
-        update_status(f"Output: {selected.name}/OHW-data")
+        add_log_message(f"OHM-data folder: {output_base_dir}")
+        update_status(f"Output: {selected.name}/OHM-data")
         page.update()
 
     output_directory_picker.on_result = on_output_directory_picked
@@ -536,7 +536,7 @@ def main(page: ft.Page):
             or str(Path.home())
         )
         output_directory_picker.get_directory_path(
-            dialog_title="Select working/output directory (OHW-data subfolder will be created here)",
+            dialog_title="Select working/output directory (OHM-data subfolder will be created here)",
             initial_directory=initial_dir if os.path.isdir(initial_dir) else None,
         )
 
@@ -1851,7 +1851,7 @@ def main(page: ft.Page):
                 str(pdf_path),
                 pagesize=letter,
                 title=doc_title,
-                author="OHW — Oral History Workflow",
+                author="OHM — Oral History Manager",
             )
             story = []
             styles = getSampleStyleSheet()
@@ -2122,7 +2122,7 @@ def main(page: ft.Page):
         
         storage.record_function_usage("function_5_report_progress")
         update_status("Generating workflow progress report...")
-        add_log_message("Scanning input directory and OHW-data...")
+        add_log_message("Scanning input directory and OHM-data...")
         page.update()
         
         try:
@@ -2138,7 +2138,7 @@ def main(page: ft.Page):
                     if stem not in input_files:
                         input_files[stem] = {'input_path': file_path, 'format': file_path.suffix.lower()}
             
-            # Scan OHW-data for processed files
+            # Scan OHM-data for processed files
             processed_files = {}
             if output_base_dir.exists():
                 for dir_path in output_base_dir.iterdir():
@@ -2183,14 +2183,14 @@ def main(page: ft.Page):
             
             # Generate report content
             timestamp = datetime.now()
-            report_content = f"""# OHW Workflow Progress Report
+            report_content = f"""# OHM Workflow Progress Report
 
 **Generated:** {timestamp.strftime('%B %d, %Y at %I:%M %p')}  
-**Auto-generated by OHW App - Function 5**
+**Auto-generated by OHM App - Function 5**
 
 ## Overview
 
-This report tracks the processing status of audio files from the input directory through the OHW workflow.
+This report tracks the processing status of audio files from the input directory through the OHM workflow.
 
 **Input Directory:** `{current_directory}`  
 **Output Directory:** `{output_base_dir}`
@@ -2658,7 +2658,7 @@ For each audio file:
             "created_at": now.strftime("%Y-%m-%d %H:%M:%S"),
             "created_at_human": now.strftime("%A, %B %d, %Y at %I:%M:%S %p"),
             "transcription_method": method,
-            "app": "OHW — Oral History Workflow",
+            "app": "OHM — Oral History Manager",
             "system": {
                 "hostname": hostname,
                 "fqdn": fqdn,
@@ -2747,7 +2747,7 @@ For each audio file:
                 narrative += (
                     f" This audio file was created by merging {len(sources)} source file(s)"
                     f" ({source_names}) on {merged_at_str} using Function 0"
-                    f" (Merge Audio Files) of the OHW application."
+                    f" (Merge Audio Files) of the OHM application."
                 )
 
             # Technical audio details
@@ -3035,7 +3035,7 @@ For each audio file:
                         spacing=10,
                     ),
                     ft.Text(
-                        "An 'OHW-data' subfolder will be created inside the selected working/output directory.",
+                        "An 'OHM-data' subfolder will be created inside the selected working/output directory.",
                         size=11,
                         italic=True,
                         color=ft.Colors.GREY_600,
@@ -3100,7 +3100,7 @@ For each audio file:
             controls=[
                 # ---- Title
                 ft.Text(
-                    "🎙️ OHW — Oral History Workflow",
+                    "🎙️ OHM — Oral History Manager",
                     size=24,
                     weight=ft.FontWeight.BOLD,
                 ),
@@ -3378,7 +3378,7 @@ For each audio file:
         _scan_pdf_files()
 
     logger.info("UI initialised successfully")
-    add_log_message("OHW application ready. Select a function to begin.")
+    add_log_message("OHM application ready. Select a function to begin.")
 
 
 if __name__ == "__main__":

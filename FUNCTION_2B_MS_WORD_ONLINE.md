@@ -70,7 +70,7 @@ The function displays instructions for this multi-step workflow:
 - Select "Download a copy"
 - Click "Download a copy" to confirm
 - The file will download to your Downloads folder
-- Move the downloaded DOCX file to your output directory: `~/OHW-data/<basename> - dg_<epoch>/`
+- Move the downloaded DOCX file to your output directory: `~/OHM-data/<basename> - dg_<epoch>/`
 - Ensure the filename matches the expected name exactly
 
 ### STEP 6: Convert to JSON
@@ -97,7 +97,7 @@ The function displays instructions for this multi-step workflow:
 
 The instructions remind you to save files in:
 ```
-~/OHW-data/<basename> - dg_<epoch>/
+~/OHM-data/<basename> - dg_<epoch>/
 ```
 
 This is the same directory used by all other functions for consistency.

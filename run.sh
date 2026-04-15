@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# OHW - Oral History Workflow - Quick Launch Script
+# OHM - Oral History Manager - Quick Launch Script
 # Sets up a Python virtual environment and launches the Flet app.
 
 set -e  # Exit on error
@@ -7,7 +7,7 @@ set -e  # Exit on error
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "=== OHW — Oral History Workflow ==="
+echo "=== OHM — Oral History Manager ==="
 echo
 
 PYTHON_CMD="python3"
@@ -44,6 +44,6 @@ if ! command -v ffmpeg &>/dev/null; then
 fi
 
 # Launch the app
-echo "Launching OHW..."
+echo "Launching OHM..."
 echo
 .venv/bin/python app.py
