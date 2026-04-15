@@ -34,8 +34,11 @@ Use MS Word Online mode instead of Whisper mode when:
    - Names are displayed in the instructions dialog and applied during DOCX-to-JSON conversion
    - Stored with normalised keys: `Interviewer`, `Speaker 1` … `Speaker 4`, `Reviewed By`
 6. In the **Active Functions** dropdown, select **"2: Transcribe with Selected Mode"**
-7. A dialog will appear with detailed step-by-step instructions
+7. A dialog will appear with two tabs:
+   - **📝 MS Word Instructions** — the step-by-step transcription workflow (default view)
+   - **📋 Review Notes** — an inline Markdown editor for recording changes and observations
 8. Follow the instructions to complete the transcription process
+9. Switch to the **Review Notes** tab at any time to jot down notes; click **Save Notes** to persist them
 
 ## Transcription Workflow
 
@@ -60,6 +63,7 @@ The function displays instructions for this multi-step workflow:
 - Review the transcription in the Transcribe pane
 - Edit speaker names (replace "Speaker 1" with actual names)
 - Fix any transcription errors
+- **💡 Use the Review Notes tab in the dialog to record significant changes you make to the Word-generated transcript. Remember to SAVE your notes.**
 - **⚠️  CRITICAL: Click 'Add to document' → select 'With Speakers and Timestamps'**
   - This option is required to preserve speaker labels and timestamps in the DOCX file
   - Using plain 'Add to document' (without speakers/timestamps) will produce a file the converter cannot parse correctly
@@ -115,6 +119,19 @@ This is the same directory used by all other functions for consistency.
 | **JSON Creation** | Automatic | Automatic (via Convert button) |
 | **Speaker Names** | Manual editing after | Applied during conversion |
 | **Best For** | Privacy, offline work, automation | Users with M365 subscription |
+
+## Review Notes Integration
+
+The Function 2B dialog includes a built-in **Review Notes** tab so you can record observations without switching away from the transcription instructions.
+
+- The tab opens the same `review_notes.md` file used by Function 3
+- If the file already exists its current content is loaded; otherwise a dated starter template is pre-filled
+- Click **Save Notes** inside the tab to write the file at any time
+- Changes saved here are immediately visible if you later open Function 3, and vice versa
+- The file is stored alongside all other per-file outputs:
+  ```
+  ~/OHM-data/<basename> - dg_<epoch>/review_notes.md
+  ```
 
 ## Important Notes
 

@@ -27,6 +27,7 @@ Choose between two transcription methods:
 - Provides speaker identification
 - Includes **automated DOCX to JSON conversion** with button click
 - Automatically maps Word speaker labels to your custom speaker names
+- Dialog has two tabs: **📝 MS Word Instructions** and **📋 Review Notes** — take notes without leaving the transcription dialog
 
 ### Function 3: Edit Review Notes
 - Opens an in-app Markdown editor for the selected oral history
@@ -35,6 +36,7 @@ Choose between two transcription methods:
 - **Save** writes the file and closes the dialog; write errors are shown inline
 - **Cancel** closes without saving any changes
 - File lives alongside all other per-file outputs in `<basename> - dg_<epoch>/`
+- Also accessible as the **📋 Review Notes** tab inside the Function 2B dialog — edits made there are shared with this function
 
 ### Function 4: Generate TXT, VTT, CSV & PDF from JSON
 - Reads edited JSON transcript (from Function 2)

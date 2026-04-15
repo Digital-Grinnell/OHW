@@ -1534,13 +1534,69 @@ def main(page: ft.Page):
             else:
                 update_status(message, is_error=True)
                 add_log_message(f"❌ {message}")
-        
+
+        # ---- Review Notes (available as a tab alongside the Word instructions) ----
+        notes_path = output_directory / "review_notes.md" if output_directory else None
+
+        if notes_path and notes_path.exists():
+            try:
+                notes_content = notes_path.read_text(encoding="utf-8")
+            except Exception:
+                notes_content = ""
+        else:
+            notes_content = (
+                f"# Review Notes\n"
+                f"**File:** {audio_to_transcribe.name}  \n"
+                f"**Date:** {datetime.now().strftime('%B %d, %Y')}  \n\n"
+                f"## Notes\n\n"
+                f"_Enter your review notes here._\n"
+            )
+
+        notes_editor = ft.TextField(
+            multiline=True,
+            min_lines=20,
+            max_lines=30,
+            value=notes_content,
+            text_size=13,
+            border_color=ft.Colors.GREY_400,
+            bgcolor=ft.Colors.WHITE,
+            expand=True,
+        )
+
+        notes_save_status = ft.Text("", size=12, italic=True, color=ft.Colors.GREY_700)
+
+        def save_notes(ev):
+            if not notes_path:
+                notes_save_status.value = "❌ No output directory — notes cannot be saved."
+                notes_save_status.color = ft.Colors.RED_600
+                page.update()
+                return
+            try:
+                notes_path.write_text(notes_editor.value or "", encoding="utf-8")
+                notes_save_status.value = f"✅ Saved: {notes_path.name}"
+                notes_save_status.color = ft.Colors.GREEN_700
+                add_log_message(f"✅ Review notes saved: {notes_path}")
+                update_status(f"Review notes saved for {audio_to_transcribe.name}")
+                page.update()
+            except Exception as ex:
+                notes_save_status.value = f"❌ Save failed: {ex}"
+                notes_save_status.color = ft.Colors.RED_600
+                add_log_message(f"❌ Failed to save review notes: {ex}")
+                page.update()
+
         dialog = ft.AlertDialog(
             title=ft.Text("📝 MS Word Online Transcription Instructions"),
             content=ft.Container(
-                content=ft.Column(
-                    [
-                        ft.Text("Selected Audio File", size=16, weight=ft.FontWeight.BOLD),
+                content=ft.Tabs(
+                    selected_index=0,
+                    animation_duration=200,
+                    expand=1,
+                    tabs=[
+                        ft.Tab(
+                            text="📝 MS Word Instructions",
+                            content=ft.Column(
+                                [
+                                    ft.Text("Selected Audio File", size=16, weight=ft.FontWeight.BOLD),
                         copyable_field("Audio Filename:", audio_to_transcribe.name),
                         copyable_field("Audio Location:", str(audio_to_transcribe.parent)),
                         
@@ -1592,6 +1648,18 @@ def main(page: ft.Page):
                         ft.Text("1. Review the transcription in the Transcribe pane"),
                         ft.Text("2. Edit speaker names (replace 'Speaker 1' with actual names)"),
                         ft.Text("3. Fix any transcription errors"),
+                        ft.Container(
+                            content=ft.Text(
+                                "💡  Use the Review Notes tab in this dialog to record significant changes you make to the Word-generated transcript.  Remember to SAVE your notes.",
+                                size=13,
+                                weight=ft.FontWeight.BOLD,
+                                color=ft.Colors.BLUE_900,
+                            ),
+                            bgcolor=ft.Colors.LIGHT_BLUE_50,
+                            border=ft.border.all(1, ft.Colors.BLUE_300),
+                            border_radius=6,
+                            padding=10,
+                        ),
                         ft.Text(
                             "4. ⚠️  CRITICAL: Click 'Add to document' → choose 'With Speakers and Timestamps'",
                             weight=ft.FontWeight.BOLD,
@@ -1650,12 +1718,40 @@ def main(page: ft.Page):
                             italic=True,
                             color=ft.Colors.GREY_700,
                         ),
+                                ],
+                                scroll=ft.ScrollMode.AUTO,
+                                spacing=5,
+                            ),
+                        ),
+                        ft.Tab(
+                            text="📋 Review Notes",
+                            content=ft.Column(
+                                [
+                                    ft.Text(
+                                        f"Editing: {notes_path}" if notes_path else "No output directory — notes cannot be saved.",
+                                        size=11,
+                                        color=ft.Colors.GREY_600,
+                                        italic=True,
+                                    ),
+                                    ft.Container(height=6),
+                                    notes_editor,
+                                    ft.Container(height=4),
+                                    notes_save_status,
+                                    ft.Container(height=8),
+                                    ft.ElevatedButton(
+                                        "Save Notes",
+                                        icon=ft.Icons.SAVE,
+                                        on_click=save_notes,
+                                    ),
+                                ],
+                                spacing=0,
+                                scroll=ft.ScrollMode.AUTO,
+                            ),
+                        ),
                     ],
-                    scroll=ft.ScrollMode.AUTO,
-                    spacing=5,
                 ),
-                width=700,
-                height=600,
+                width=760,
+                height=680,
             ),
             actions=[
                 ft.TextButton("Close", on_click=close_dialog),
