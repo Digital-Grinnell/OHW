@@ -113,7 +113,7 @@ For example, if the merged file is `Interview_Part (merged).wav`, the sidecar is
 }
 ```
 
-### Integration with Transcription (Functions 2a / 2b)
+### Integration with Transcription (Function 2)
 
 When the merged file is later transcribed, `collect_audio_file_info` automatically detects the sidecar (by looking for `<stem>.merge_info.json` next to the audio file) and includes its contents in `notes.source_audio.merge_info` inside the transcript JSON.
 

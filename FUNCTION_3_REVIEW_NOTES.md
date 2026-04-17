@@ -94,6 +94,6 @@ Contextual information for future archivists: related collections, subject matte
 - You can run Function 3 multiple times; each save overwrites the previous content
 - The file is plain UTF-8 text and can be opened and edited in any text editor outside the app
 
-## Access During Function 2B
+## Access During Function 2
 
-You do not need to leave the transcription dialog to take notes. The Function 2B (MS Word Online) dialog includes a built-in **📋 Review Notes** tab that opens the same `review_notes.md` file. Click **Save Notes** inside that tab to save without closing the transcription instructions. Any notes saved there are immediately available the next time you open Function 3.
+You do not need to leave the transcription dialog to take notes. The Function 2 (MS Word Online) dialog includes a built-in **📋 Review Notes** tab that opens the same `review_notes.md` file. Click **Save Notes** inside that tab to save without closing the transcription instructions. Any notes saved there are immediately available the next time you open Function 3.

@@ -1,9 +1,12 @@
 # Function 2: Transcribe with MS Word Online
 
 ## Purpose
-Provide step-by-step instructions for manual transcription using Microsoft Word Online's built-in Transcribe feature. This is an alternative to automated Whisper transcription that uses Microsoft's cloud-based transcription service.
+Provide step-by-step instructions for manual transcription using Microsoft Word Online's built-in Transcribe feature, using Microsoft's cloud-based transcription service.
 
-**Note:** This documentation describes the MS Word Online mode of Function 2. Select this mode using the Transcription Mode radio buttons in the app.
+> **Note:** MS Word Online is the sole active transcription method in OHM. OpenAI Whisper
+> (local, CPU-based) was evaluated as an alternative but was removed from the UI due to
+> slow performance on non-GPU hardware and output quality concerns. Its code and documentation
+> are preserved for reference in `FUNCTION_2A_TRANSCRIBE_WHISPER.md`.
 
 ## Requirements
 - **Microsoft 365 subscription** - Required for Word Online transcription feature
@@ -69,16 +72,24 @@ The function displays instructions for this multi-step workflow:
   - Using plain 'Add to document' (without speakers/timestamps) will produce a file the converter cannot parse correctly
 
 ### STEP 5: Save as DOCX
-- Click the File menu in Word
-- Select "Create a Copy"
-- Select "Download a copy"
-- Click "Download a copy" to confirm
-- The file will download to your Downloads folder
-- Move the downloaded DOCX file to your output directory: `~/OHM-data/<basename> - dg_<epoch>/`
-- Ensure the filename matches the expected name exactly
+Save the DOCX directly to your output directory — no moving needed.
+
+Before you begin the download, copy these two values from the instructions dialog:
+- **Save To (Output Directory):** shown as a copyable field in the dialog — the full path to `~/OHM-data/<basename> - dg_<epoch>/`
+- **Save As (Filename):** shown as a copyable field in the dialog — e.g. `dg_<epoch>.docx`
+
+Then:
+- Click the **File** menu in Word
+- Select **Create a Copy**
+- Select **Download a copy** and confirm
+- When the browser's Save dialog appears, navigate to the **Output Directory** path above, set the filename to the **Save As** value, and click **Save**
+
+> **If your browser saves automatically to Downloads** (no Save dialog): move the file
+> from Downloads to the output directory and rename it to match the expected filename
+> before clicking **Convert to JSON**.
 
 ### STEP 6: Convert to JSON
-- After moving the DOCX file to the output directory, click the **"Convert to JSON"** button
+- Once the DOCX is in the output directory with the correct filename, click the **"Convert to JSON"** button
 - The function will automatically:
   - Parse the DOCX transcription file
   - Extract timestamps and speaker labels from Word's format
@@ -122,7 +133,7 @@ This is the same directory used by all other functions for consistency.
 
 ## Review Notes Integration
 
-The Function 2B dialog includes a built-in **Review Notes** tab so you can record observations without switching away from the transcription instructions.
+The Function 2 dialog includes a built-in **Review Notes** tab so you can record observations without switching away from the transcription instructions.
 
 - The tab opens the same `review_notes.md` file used by Function 3
 - If the file already exists its current content is loaded; otherwise a dated starter template is pre-filled
@@ -150,7 +161,7 @@ The Function 2B dialog includes a built-in **Review Notes** tab so you can recor
 ### Manual JSON Creation No Longer Required
 - Previous versions required manually extracting and formatting JSON
 - The automated conversion button handles this automatically
-- Simply download the DOCX, move it to the output directory, and click the button
+- Save the DOCX directly to the output directory during download (path and filename shown in the dialog), then click the button
 
 ### Data Privacy
 - Your audio file is uploaded to Microsoft's servers for processing

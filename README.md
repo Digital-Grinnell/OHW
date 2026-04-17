@@ -36,7 +36,7 @@ Choose between two transcription methods:
 - **Save** writes the file and closes the dialog; write errors are shown inline
 - **Cancel** closes without saving any changes
 - File lives alongside all other per-file outputs in `<basename> - dg_<epoch>/`
-- Also accessible as the **📋 Review Notes** tab inside the Function 2B dialog — edits made there are shared with this function
+- Also accessible as the **📋 Review Notes** tab inside the Function 2 dialog — edits made there are shared with this function
 
 ### Function 4: Generate TXT, VTT, CSV & PDF from JSON
 - Reads edited JSON transcript (from Function 2)
@@ -265,8 +265,8 @@ Thank you for having me.
 Each function has detailed help documentation accessible via Help Mode:
 
 - **FUNCTION_1_WAV_TO_MP3.md** - Audio conversion guide
-- **FUNCTION_2A_TRANSCRIBE_WHISPER.md** - Whisper transcription guide
-- **FUNCTION_2B_MS_WORD_ONLINE.md** - MS Word Online guide
+- **FUNCTION_2A_TRANSCRIBE_WHISPER.md** - Whisper transcription guide (deprecated; preserved for reference)
+- **FUNCTION_2_MS_WORD_ONLINE.md** - MS Word Online transcription guide
 - **FUNCTION_3_REVIEW_NOTES.md** - Review notes editor guide
 - **FUNCTION_4_GENERATE_OUTPUTS.md** - Output generation guide
 - **FUNCTION_5_REPORT_PROGRESS.md** - Progress reporting guide
@@ -389,3 +389,47 @@ Application logs are stored in:
 ## Support
 
 For questions or issues, please refer to the function-specific help documentation or contact the Digital.Grinnell team.
+
+---
+
+## Changelog
+
+### 2026-04-16
+
+#### Bug fix — MP3 source file not copied to output directory (Functions 2a & 2b)
+
+When a workflow starts from an MP3 file (rather than a WAV), Function 1 (WAV-to-MP3
+conversion) is correctly skipped, but the standardised `dg_<epoch>.mp3` file was never
+created in the output directory.  Functions 2a and 2b then couldn't find it there and,
+in Function 2a's case, silently fell back to transcribing from the original source path
+instead of the output-directory copy, contrary to the documented behaviour.
+
+**Fix (`app.py`):** In both `on_function_2a_transcribe_whisper` and
+`on_function_2b_ms_word_online`, when an MP3 is selected and `dg_<epoch>.mp3` does not
+yet exist in the output directory, `shutil.copy2` now copies it there before proceeding.
+A warning is logged and the original path is used as a fallback if the copy fails.
+
+#### Feature — OpenAI Whisper removed from the UI; MS Word Online is the sole transcription method
+
+OpenAI Whisper (Function 2a) was evaluated as an automated local transcription option
+but was removed from the OHM interface due to slow performance on CPU-only hardware and
+output quality concerns relative to MS Word Online's cloud service.
+
+**Changes (`app.py`):**
+- The **Transcription Mode** radio-button selector (Whisper / MS Word Online) has been
+  removed from the Functions panel UI; the widget code is preserved in comments.
+- `set_transcription_mode()` and the Whisper/Word dispatch in `on_function_2_transcribe`
+  are commented out; the function now unconditionally calls `on_function_2b_ms_word_online`.
+- `on_function_2a_transcribe_whisper` itself is preserved in full (commented out) for
+  future reference.
+- The Function 2 dropdown label changed from `"2: Transcribe with Selected Mode"` to
+  `"2: Transcribe with MS Word Online"`, and its help file is now set directly to
+  `FUNCTION_2B_MS_WORD_ONLINE.md` (no longer mode-dependent at runtime).
+- The mode-dispatching block inside `show_help_dialog()` is commented out.
+
+**Changes (documentation):**
+- `FUNCTION_2A_TRANSCRIBE_WHISPER.md` — stale radio-button note replaced with a
+  *Development note* blockquote recording why Whisper was removed and where the code lives.
+- `FUNCTION_2B_MS_WORD_ONLINE.md` — stale radio-button note replaced with a *Note*
+  blockquote confirming MS Word Online is the sole active method and pointing to the 2A
+  doc for Whisper history.

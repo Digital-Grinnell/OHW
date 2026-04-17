@@ -1275,13 +1275,19 @@ def main(page: ft.Page):
                 add_log_message(f"Skipped: {mp3_filename} not found in {output_directory.name}. Run Function 1 to convert.")
                 return
         elif selected_file.suffix.lower() == ".mp3":
-            # MP3 selected — prefer the output-directory copy, fall back to selected file
+            # MP3 selected — use output-directory copy, copying it there if needed
             if mp3_path.exists():
                 audio_to_transcribe = mp3_path
                 add_log_message(f"Using MP3 from output directory: {mp3_filename}")
             else:
-                audio_to_transcribe = selected_file
-                add_log_message(f"Using selected MP3 file: {selected_file.name}")
+                try:
+                    add_log_message(f"Copying MP3 to output directory as {mp3_filename}...")
+                    shutil.copy2(selected_file, mp3_path)
+                    audio_to_transcribe = mp3_path
+                    add_log_message(f"✅ Copied: {mp3_filename}")
+                except Exception as ex:
+                    add_log_message(f"Warning: Could not copy MP3 to output directory: {str(ex)}. Using original.")
+                    audio_to_transcribe = selected_file
         else:
             update_status(
                 f"Cannot transcribe {selected_file.suffix} file. Please select a WAV or MP3 file.",
@@ -1442,7 +1448,7 @@ def main(page: ft.Page):
         
         page.update()
 
-    def on_function_2b_ms_word_online(e):
+    def on_function_2_ms_word_online(e):
         """Provide instructions for transcription using MS Word Online."""
         nonlocal selected_file, output_directory, current_epoch
         
@@ -1460,6 +1466,16 @@ def main(page: ft.Page):
             mp3_in_output = output_directory / f"{base_name}.mp3"
             if mp3_in_output.exists():
                 audio_to_transcribe = mp3_in_output
+            elif selected_file.suffix.lower() == '.mp3':
+                # Copy selected MP3 into output directory as dg_<epoch>.mp3
+                try:
+                    add_log_message(f"Copying MP3 to output directory as {base_name}.mp3...")
+                    shutil.copy2(selected_file, mp3_in_output)
+                    audio_to_transcribe = mp3_in_output
+                    add_log_message(f"✅ Copied: {base_name}.mp3")
+                except Exception as ex:
+                    add_log_message(f"Warning: Could not copy MP3 to output directory: {str(ex)}. Using original.")
+                    audio_to_transcribe = selected_file
         
         # Otherwise use selected MP3 file
         if not audio_to_transcribe and selected_file.suffix.lower() == '.mp3':
@@ -1470,7 +1486,7 @@ def main(page: ft.Page):
             add_log_message("No MP3 file found for transcription")
             return
 
-        storage.record_function_usage("function_2b_ms_word_online")
+        storage.record_function_usage("function_2_ms_word_online")
         
         # Create instructions dialog
         expected_docx_name = f"{audio_to_transcribe.stem}.docx"
@@ -1675,15 +1691,33 @@ def main(page: ft.Page):
                         ft.Divider(height=15),
                         
                         ft.Text("STEP 5: Save as DOCX", size=14, weight=ft.FontWeight.BOLD),
+                        ft.Text("Save the DOCX directly to your output directory — no moving needed.", size=12, italic=True, color=ft.Colors.GREY_700),
+                        ft.Text("Copy these values before you begin the download:", weight=ft.FontWeight.BOLD),
+                        copyable_field("Save To (Output Directory):", output_path),
+                        copyable_field("Save As (Filename):", expected_docx_name),
                         ft.Text("1. Click the 'File' menu in Word"),
                         ft.Text("2. Select 'Create a Copy'"),
                         ft.Text("3. Select 'Download a copy'"),
                         ft.Text("4. Click 'Download a copy' to confirm"),
-                        ft.Text("5. The file will download to your Downloads folder"),
-                        ft.Text("6. IMPORTANT: Move the downloaded DOCX file to this location:", weight=ft.FontWeight.BOLD),
-                        copyable_field("Output Directory:", output_path),
-                        ft.Text("7. Ensure the filename is exactly:", weight=ft.FontWeight.BOLD),
-                        copyable_field("Expected DOCX Filename:", expected_docx_name),
+                        ft.Container(
+                            content=ft.Text(
+                                "💡  When the browser's Save dialog appears, navigate to the Output Directory "
+                                "shown above and set the filename to the Save As value above, then click Save.",
+                                size=12,
+                                color=ft.Colors.BLUE_900,
+                            ),
+                            bgcolor=ft.Colors.LIGHT_BLUE_50,
+                            border=ft.border.all(1, ft.Colors.BLUE_300),
+                            border_radius=6,
+                            padding=10,
+                        ),
+                        ft.Text(
+                            "If your browser saves automatically to Downloads: move the file to the Output Directory above "
+                            "and rename it to match the Save As filename before clicking Convert to JSON.",
+                            size=11,
+                            italic=True,
+                            color=ft.Colors.GREY_600,
+                        ),
                         
                         ft.Divider(height=15),
                         
@@ -2550,22 +2584,24 @@ For each audio file:
 
     # -------------------------------------------------------- function metadata
 
-    # Transcription mode state (Whisper or MS Word)
-    transcription_mode = "MS Word Online"  # Default mode (OpenAI Whisper disabled)
+    # Transcription mode — MS Word Online is the only active mode.
+    # OpenAI Whisper (on_function_2a_transcribe_whisper) was evaluated and removed from the UI;
+    # its code is preserved in comments for reference.
+    transcription_mode = "MS Word Online"
 
-    def set_transcription_mode(mode):
-        """Update the transcription mode selection."""
-        nonlocal transcription_mode
-        transcription_mode = mode
-        add_log_message(f"🔄 Transcription mode set to: {mode}")
-        update_status(f"Transcription mode: {mode}")
+    # set_transcription_mode and the Whisper/Word dispatch are no longer needed now that
+    # MS Word Online is the sole mode, but kept here in comments for context.
+    # def set_transcription_mode(mode):
+    #     nonlocal transcription_mode
+    #     transcription_mode = mode
+    #     add_log_message(f"🔄 Transcription mode set to: {mode}")
+    #     update_status(f"Transcription mode: {mode}")
 
     def on_function_2_transcribe(e):
-        """Unified transcription function that delegates to Whisper or MS Word based on mode."""
-        if transcription_mode == "OpenAI Whisper":
-            on_function_2a_transcribe_whisper(e)
-        else:  # MS Word Online
-            on_function_2b_ms_word_online(e)
+        """Transcription function — delegates to MS Word Online (sole active mode)."""
+        # Previously dispatched to on_function_2a_transcribe_whisper when mode == "OpenAI Whisper".
+        # Whisper was removed from the UI; on_function_2a_transcribe_whisper is preserved in comments.
+        on_function_2_ms_word_online(e)
 
     # Active functions - frequently used
     active_functions = [
@@ -2591,10 +2627,10 @@ For each audio file:
             "help_file": "FUNCTION_1_WAV_TO_MP3.md"
         },
         "function_2_transcribe": {
-            "label": "2: Transcribe with Selected Mode",
+            "label": "2: Transcribe with MS Word Online",
             "icon": "📝",
             "handler": on_function_2_transcribe,
-            "help_file": None  # Mode-dependent, shown in handler
+            "help_file": "FUNCTION_2_MS_WORD_ONLINE.md"
         },
         "function_3_review_notes": {
             "label": "3: Edit Review Notes",
@@ -2629,14 +2665,15 @@ For each audio file:
         help_file = func_info.get("help_file")
         display_label = func_info['label']  # Default to function label
         
-        # Special handling for unified transcription function - use mode-specific help
-        if function_key == "function_2_transcribe":
-            if transcription_mode == "OpenAI Whisper":
-                help_file = "FUNCTION_2A_TRANSCRIBE_WHISPER.md"
-                display_label = "2: Transcribe with OpenAI Whisper"
-            else:  # MS Word Online
-                help_file = "FUNCTION_2B_MS_WORD_ONLINE.md"
-                display_label = "2: Transcribe with MS Word Online"
+        # Function 2 always uses MS Word Online now; Whisper was removed from the UI.
+        # (Mode-specific help dispatch kept in comments for reference)
+        # if function_key == "function_2_transcribe":
+        #     if transcription_mode == "OpenAI Whisper":
+        #         help_file = "FUNCTION_2A_TRANSCRIBE_WHISPER.md"
+        #         display_label = "2: Transcribe with OpenAI Whisper"
+        #     else:
+        #         help_file = "FUNCTION_2B_MS_WORD_ONLINE.md"
+        #         display_label = "2: Transcribe with MS Word Online"
 
         if not help_file:
             add_log_message(f"No help file available for {display_label}")
@@ -3237,34 +3274,20 @@ For each audio file:
                 ft.Container(
                     content=ft.Column(
                         [
-                            # Transcription Mode - Radio buttons
-                            ft.Column(
-                                [
-                                    ft.Text(
-                                        "Transcription Mode",
-                                        size=18,
-                                        weight=ft.FontWeight.BOLD,
-                                    ),
-                                    transcription_mode_radio := ft.RadioGroup(
-                                        content=ft.Row(
-                                            [
-                                                ft.Radio(
-                                                    value="OpenAI Whisper",
-                                                    label="OpenAI Whisper (disabled)",
-                                                    disabled=True,
-                                                ),
-                                                ft.Radio(value="MS Word Online", label="MS Word Online"),
-                                            ],
-                                            spacing=20,
-                                        ),
-                                        value="MS Word Online",
-                                        on_change=lambda e: set_transcription_mode(e.control.value),
-                                    ),
-                                ],
-                                spacing=5,
-                            ),
-                            
-                            ft.Container(height=10),  # Spacer
+                            # Transcription Mode selector removed — MS Word Online is the only mode.
+                            # (OpenAI Whisper was evaluated but removed from the UI; see FUNCTION_2A_TRANSCRIBE_WHISPER.md)
+                            # ft.Column([
+                            #     ft.Text("Transcription Mode", size=18, weight=ft.FontWeight.BOLD),
+                            #     transcription_mode_radio := ft.RadioGroup(
+                            #         content=ft.Row([
+                            #             ft.Radio(value="OpenAI Whisper", label="OpenAI Whisper (disabled)", disabled=True),
+                            #             ft.Radio(value="MS Word Online", label="MS Word Online"),
+                            #         ], spacing=20),
+                            #         value="MS Word Online",
+                            #         on_change=lambda e: set_transcription_mode(e.control.value),
+                            #     ),
+                            # ], spacing=5),
+                            # ft.Container(height=10),  # Spacer
                             
                             ft.Row(
                                 [

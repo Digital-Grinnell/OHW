@@ -1,16 +1,16 @@
 # Function 4: Generate TXT, VTT, CSV & PDF from JSON
 
 ## Purpose
-Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transcript created by Function 2a or Function 2b. This allows you to perfect the transcript—fixing speaker names, correcting transcription errors, and adjusting content—before creating the final deliverable files.
+Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transcript created by Function 2. This allows you to perfect the transcript—fixing speaker names, correcting transcription errors, and adjusting content—before creating the final deliverable files.
 
 ## Requirements
-- **Prerequisite**: Function 2a or Function 2b must have been run to create the initial JSON transcript
+- **Prerequisite**: Function 2 must have been run to create the initial JSON transcript
 - **JSON file**: `dg_<epoch>_transcript.json` must exist in the output directory
 - **Edited content**: You should have edited the JSON to fix speaker names, spelling, etc.
 
 ## Usage
 
-1. **First, run Function 2a or Function 2b** to create the initial JSON transcript
+1. **First, run Function 2** to create the initial JSON transcript
 2. **Edit the JSON file** located in `~/OHM-data/<basename> - dg_<epoch>/dg_<epoch>_transcript.json`:
    - Change speaker labels (e.g., `"speaker": "SPEAKER_00"` → `"speaker": "John Doe"`)
    - Fix transcription errors in the `"text"` fields
@@ -39,7 +39,7 @@ For example:
 ~/OHM-data/interview_john_doe - dg_1712345678/
   ├── dg_1712345678.wav                  (from Function 1)
   ├── dg_1712345678.mp3                  (from Function 1)
-  ├── dg_1712345678_transcript.json      (from Function 2a/2b, YOU EDIT THIS)
+  ├── dg_1712345678_transcript.json      (from Function 2, YOU EDIT THIS)
   ├── dg_1712345678.txt                  (from Function 4)
   ├── dg_1712345678.vtt                  (from Function 4)
   ├── dg_1712345678.csv                  (from Function 4)

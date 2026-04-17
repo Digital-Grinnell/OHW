@@ -3,7 +3,12 @@
 ## Purpose
 Transcribe MP3 audio files to text using OpenAI Whisper, generating a clean segment-level JSON file that can be edited before creating final outputs.
 
-**Note:** This documentation describes the OpenAI Whisper mode of Function 2. Select this mode using the Transcription Mode radio buttons in the app.
+> **Development note:** OpenAI Whisper was implemented and evaluated as the automated
+> transcription option for Function 2. It was ultimately removed from the OHM UI due to
+> slow processing speed on CPU-only hardware and inconsistent output quality compared to
+> MS Word Online's cloud service. The code (`on_function_2a_transcribe_whisper`) is
+> preserved in `app.py` (commented out) for future reference. MS Word Online is the
+> sole active transcription method. See `FUNCTION_2_MS_WORD_ONLINE.md`.
 
 ## Requirements
 - **Python packages** must be installed:
