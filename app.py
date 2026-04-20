@@ -1667,8 +1667,8 @@ def main(page: ft.Page):
                         ft.Text("STEP 1: Open Microsoft Word Online", size=14, weight=ft.FontWeight.BOLD),
                         ft.Text("1. Click link below to open Word Online:"),
                         ft.TextButton(
-                            "https://www.office.com/launch/word",
-                            url="https://www.office.com/launch/word",
+                            "https://word.cloud.microsoft",
+                            url="https://word.cloud.microsoft",
                             style=ft.ButtonStyle(color=ft.Colors.BLUE_700),
                         ),
                         ft.Text("2. Sign in with your Microsoft 365 account (subscription required)"),
@@ -1929,7 +1929,7 @@ def main(page: ft.Page):
             notes = build_provenance_notes(
                 method="MS Word Online",
                 extra={
-                    "ms_word_url": "https://www.office.com/launch/word",
+                    "ms_word_url": "https://word.cloud.microsoft",
                     "docx_source": str(docx_path),
                     **(  {"word_online_user": word_user}  if word_user else {}),
                     "segment_count": len(segments),

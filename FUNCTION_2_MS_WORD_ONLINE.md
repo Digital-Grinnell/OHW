@@ -48,7 +48,7 @@ Use MS Word Online mode instead of Whisper mode when:
 The function displays instructions for this multi-step workflow:
 
 ### STEP 1: Open Microsoft Word Online
-- Navigate to https://www.office.com/launch/word
+- Navigate to https://word.cloud.microsoft
 - Sign in with your Microsoft 365 account
 - Create a blank document
 
