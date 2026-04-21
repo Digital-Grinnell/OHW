@@ -50,11 +50,12 @@ The function displays instructions for this multi-step workflow:
 ### STEP 1: Open Microsoft Word Online
 - Navigate to https://word.cloud.microsoft
 - Sign in with your Microsoft 365 account
-- Create a blank document
+- Click 'Create Blank Document'
 
 ### STEP 2: Set Document Name
-- Rename the document to match your audio file name
-- This ensures consistency across all output files
+- Click on 'Document X', or whatever name is given to the new document, near the top left corner of the Word window
+- Replace it with the name of your audio file (without extension)
+- Press Enter to confirm
 
 ### STEP 3: Start Transcription
 - Access the Transcribe feature (Home tab → Dictate dropdown → Transcribe)

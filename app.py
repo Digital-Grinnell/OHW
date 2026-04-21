@@ -1672,12 +1672,12 @@ def main(page: ft.Page):
                             style=ft.ButtonStyle(color=ft.Colors.BLUE_700),
                         ),
                         ft.Text("2. Sign in with your Microsoft 365 account (subscription required)"),
-                        ft.Text("3. Click 'Blank document'"),
+                        ft.Text("3. Click 'Create Blank Document'"),
                         
                         ft.Divider(height=15),
                         
                         ft.Text("STEP 2: Set Document Name", size=14, weight=ft.FontWeight.BOLD),
-                        ft.Text("1. Click on 'Document' at the top of the Word window"),
+                        ft.Text("1. Click on 'Document X', or whatever name is given to the new document, near the top left corner of the Word window"),
                         ft.Text("2. Replace it with this name (copy text below):"),
                         copyable_field("Document Name:", audio_to_transcribe.stem),
                         ft.Text("3. Press Enter to confirm"),
