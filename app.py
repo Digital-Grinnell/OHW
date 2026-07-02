@@ -1216,7 +1216,7 @@ def main(page: ft.Page):
         update_status(f"Function 0: Select files to merge from {current_directory.name}")
 
     def on_function_1_wav_to_mp3(e):
-        """Execute Function 1: WAV/M4A to MP3 Conversion."""
+        """Execute Function 1: WAV/M4A/MP4 to MP3 Conversion."""
         import threading
         nonlocal selected_file, output_directory, current_epoch
 
@@ -1250,12 +1250,12 @@ def main(page: ft.Page):
             return
 
         source_suffix = selected_file.suffix.lower()
-        supported_input_suffixes = {".wav", ".m4a"}
+        supported_input_suffixes = {".wav", ".m4a", ".mp4"}
 
-        # Only convert WAV or M4A files
+        # Only convert WAV, M4A, or MP4 files
         if source_suffix not in supported_input_suffixes:
             update_status(
-                f"Cannot convert {selected_file.suffix} file. Please select a WAV or M4A file.",
+                f"Cannot convert {selected_file.suffix} file. Please select a WAV, M4A, or MP4 file.",
                 is_error=True,
             )
             add_log_message(f"Skipped: {selected_file.name} is not a supported Function 1 source file")
@@ -2414,7 +2414,7 @@ This report tracks the processing status of audio files from the input directory
                     file_info = input_files[name]
                     report_content += f"**{name}{file_info['format']}**  \n"
                     report_content += f"- Status: Source file only\n"
-                    report_content += f"- Next: Run Function 1 (if WAV/M4A and you want a standardized MP3) or Function 2\n\n"
+                    report_content += f"- Next: Run Function 1 (if WAV/M4A/MP4 and you want a standardized MP3) or Function 2\n\n"
             
             report_content += f"""---
 
@@ -2422,7 +2422,7 @@ This report tracks the processing status of audio files from the input directory
 
 For each audio file:
 
-1. **(If WAV or M4A) Function 1: Convert to MP3**
+1. **(If WAV, M4A, or MP4) Function 1: Convert to MP3**
 2. **Function 2: Transcribe** (MS Word Online mode)
 3. **Edit JSON** (fix speaker names, correct text)
 4. **Function 4: Generate TXT, VTT, CSV & PDF** from edited JSON
@@ -2619,7 +2619,7 @@ For each audio file:
             "help_file": "FUNCTION_0_MERGE_AUDIO.md"
         },
         "function_1_wav_to_mp3": {
-            "label": "1: Convert WAV/M4A to MP3",
+            "label": "1: Convert WAV/M4A/MP4 to MP3",
             "icon": "🎵",
             "handler": on_function_1_wav_to_mp3,
             "help_file": "FUNCTION_1_WAV_TO_MP3.md"

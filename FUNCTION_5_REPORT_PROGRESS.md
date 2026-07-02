@@ -143,7 +143,7 @@ The report tracks files through these stages:
 
 Based on what the report shows:
 
-- **Files not started**: Run Function 1 if you want a standardized MP3 from WAV or M4A, or run Function 2 directly on a supported source file
+- **Files not started**: Run Function 1 if you want a standardized MP3 from WAV, M4A, or MP4, or run Function 2 directly on a supported source file
 - **Missing transcripts**: Run Function 2 to create JSON transcripts
 - **Missing outputs**: Run Function 4 to generate TXT, VTT, CSV, and PDF files
 - **Incomplete files**: Check the "In Progress" section to see what's missing

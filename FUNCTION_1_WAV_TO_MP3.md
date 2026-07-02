@@ -1,7 +1,7 @@
-# Function 1: Convert WAV or M4A to MP3
+# Function 1: Convert WAV, M4A, or MP4 to MP3
 
 ## Purpose
-Convert WAV or M4A audio files to standardized MP3 format for oral history recordings. WAV sources are preserved as WAV copies in the OHM output directory; M4A sources are preserved as M4A copies and converted directly to MP3 without creating an intermediate WAV.
+Convert WAV, M4A, or MP4 source files to standardized MP3 format for oral history recordings. Source files are preserved in their original format in the OHM output directory and converted directly to MP3.
 
 ## Requirements
 - **ffmpeg** must be installed on your system
@@ -13,15 +13,15 @@ Convert WAV or M4A audio files to standardized MP3 format for oral history recor
 
 1. In the **Inputs** section, click **Browse...** to select a directory containing your audio files
 2. Click **List WAV and MP3 Files** to scan the directory and all subdirectories
-3. From the **Select Audio File** dropdown, choose the WAV or M4A file you want to convert
+3. From the **Select Audio File** dropdown, choose the WAV, M4A, or MP4 file you want to convert
    - Files are displayed with relative paths (e.g., `subdir/file.wav`)
    - The app searches `~/OHM-data/` for an existing directory matching the file's basename
    - If found, it reuses that directory and epoch timestamp
    - If not found, it creates a new directory named `<sanitized-basename>--dg_<epoch>`
-4. In the **Active Functions** dropdown, select **"🎵 1: Convert WAV/M4A to MP3"**
+4. In the **Active Functions** dropdown, select **"🎵 1: Convert WAV/M4A/MP4 to MP3"**
 5. The function will:
    - Open a **"Converting Audio to MP3"** progress dialog immediately — do not close the app or start other functions until it dismisses itself
-   - **Step 1:** Copy the source audio to the output directory using its original extension, such as `dg_<epoch>.wav` or `dg_<epoch>.m4a`
+   - **Step 1:** Copy the source audio to the output directory using its original extension, such as `dg_<epoch>.wav`, `dg_<epoch>.m4a`, or `dg_<epoch>.mp4`
    - **Step 2:** Convert that copied source file to `dg_<epoch>.mp3`
    - The dialog updates as each step completes, then closes automatically when done
 6. Check the status bar and log output for the final result
@@ -49,7 +49,7 @@ The converted files will use the directory's epoch timestamp:
 ~/OHM-data/interview_john_doe--dg_1712345678/dg_1712345678.mp3 (converted)
 ```
 
-If the source is M4A, the preserved source copy will be `dg_<epoch>.m4a` instead of `dg_<epoch>.wav`.
+If the source is M4A or MP4, the preserved source copy will be `dg_<epoch>.m4a` or `dg_<epoch>.mp4` instead of `dg_<epoch>.wav`.
 
 All output files for this audio file will be stored in this directory. The source audio file is copied to the output directory with standardized naming before conversion. This keeps each oral history recording's outputs organized and allows you to work with the same file multiple times without creating duplicate directories.
 
@@ -64,18 +64,18 @@ All output files for this audio file will be stored in this directory. The sourc
 ### File Handling
 - When a file is selected, the app searches for an existing output directory matching the basename
 - If found, that directory and its epoch are reused; if not, a new directory is created
-- Source audio file is copied to the output directory under `~/OHM-data/` as `dg_<epoch>.wav` or `dg_<epoch>.m4a`
+- Source audio file is copied to the output directory under `~/OHM-data/` as `dg_<epoch>.wav`, `dg_<epoch>.m4a`, or `dg_<epoch>.mp4`
 - Original source file remains unchanged in its original location
 - If the copied source file already exists in the output directory, the copy step is skipped
 - MP3 is created from the copied source audio file in the output directory as `dg_<epoch>.mp3`
 - If `dg_<epoch>.mp3` already exists in the output directory, conversion is skipped
 - Selecting the same file multiple times reuses the same output directory
-- For M4A sources, OHM does not create a WAV because transcoding a lossy M4A into WAV does not improve preservation quality; the original M4A is the preservation copy
+- For M4A or MP4 sources, OHM does not create a WAV because transcoding lossy/compressed sources into WAV does not improve preservation quality; the original source file is the preservation copy
 
 ## Expected Results
 
 A successful conversion will:
-- Copy the source WAV or M4A to the output directory with its original extension (if not already present)
+- Copy the source WAV, M4A, or MP4 to the output directory with its original extension (if not already present)
 - Create an MP3 file named `dg_<epoch>.mp3` in the unique output directory under `~/OHM-data/`
 - Display file sizes for the source audio and MP3 files
 - Show compression ratio when the source is larger than the MP3, which is typical for WAV inputs
@@ -89,15 +89,15 @@ A successful conversion will:
 **Solution**: Use the Inputs section to select a directory and choose a file from the dropdown
 
 ### Unsupported source file
-**Problem**: Selected file is an MP3, MP4, or other unsupported format
-**Solution**: Function 1 currently accepts `.wav` and `.m4a` inputs. Select one of those formats.
+**Problem**: Selected file is an MP3 or other unsupported format
+**Solution**: Function 1 currently accepts `.wav`, `.m4a`, and `.mp4` inputs. Select one of those formats.
 
 ### ffmpeg not found
 **Problem**: The system cannot find the ffmpeg executable
 **Solution**: Install ffmpeg using the appropriate method for your operating system
 
 ### Source file already copied
-**Problem**: The preserved source file such as `dg_<epoch>.wav` or `dg_<epoch>.m4a` already exists in the output directory
+**Problem**: The preserved source file such as `dg_<epoch>.wav`, `dg_<epoch>.m4a`, or `dg_<epoch>.mp4` already exists in the output directory
 **Result**: Copy step is skipped; conversion proceeds using the existing copied source file
 **Note**: This is expected behavior and not an error
 
@@ -121,5 +121,5 @@ A successful conversion will:
 - This allows you to work with the same oral history file across multiple sessions
 - All processing outputs for a single audio file are kept together in its output directory
 - The source file is preserved in both its original location and copied to the output directory
-- For M4A sources, preserving the original M4A is preferable to creating a synthetic WAV for archival storage
+- For M4A and MP4 sources, preserving the original source file is preferable to creating a synthetic WAV for archival storage
 - If the copied source file and MP3 already exist in output directory, both copy and conversion steps are skipped

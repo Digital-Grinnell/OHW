@@ -12,8 +12,8 @@ OHM is a desktop application built with Flet that streamlines the creation and p
 - Creates merge provenance JSON sidecar file
 - Requires FFmpeg
 
-### Function 1: Convert WAV or M4A to MP3
-- Converts WAV or M4A audio files to standardized MP3 format
+### Function 1: Convert WAV, M4A, or MP4 to MP3
+- Converts WAV, M4A, or MP4 source files to standardized MP3 format
 - Uses FFmpeg for high-quality conversion
 - Preserves the original source format in the output directory
 - Required for files that need to be uploaded to transcription services
@@ -143,7 +143,7 @@ All dependencies are installed automatically by `run.sh`:
    - The setting persists across sessions
 
 2. **Convert Audio** (if needed)
-   - If you have WAV or M4A files, run **Function 1** to create a standardized MP3
+   - If you have WAV, M4A, or MP4 files, run **Function 1** to create a standardized MP3
    - MP3s are required for cloud transcription services
    - Skip this step if you already have an MP3 you want to use directly
 
@@ -297,7 +297,7 @@ brew install ffmpeg
 ### MS Word Transcription Issues
 - Ensure you have an active Microsoft 365 subscription
 - Word Online transcription requires < 200MB audio files
-- Use Function 1 to convert/compress large WAV or M4A files first
+- Use Function 1 to convert/compress large WAV, M4A, or MP4 files first
 - Microsoft imposes a **300-minute-per-month** transcription limit; if exceeded, the Transcribe pane will be unavailable until the limit resets
 
 ### PDF Generation Fails
