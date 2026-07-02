@@ -152,17 +152,17 @@ def check_ffmpeg() -> bool:
     return shutil.which("ffmpeg") is not None
 
 
-def convert_wav_to_mp3(
-    wav_path: Path,
+def convert_audio_to_mp3(
+    source_path: Path,
     mp3_path: Path,
     quality: int = 2,
     sample_rate: int = 44100,
 ) -> tuple[bool, str]:
     """
-    Convert a WAV file to MP3 using ffmpeg.
+    Convert a supported audio file to MP3 using ffmpeg.
 
     Args:
-        wav_path: Path to the source WAV file.
+        source_path: Path to the source audio file.
         mp3_path: Destination path for the MP3 file.
         quality:  VBR quality level (0=best, 9=worst; 2 approx. 190 kbps).
         sample_rate: Output sample rate in Hz.
@@ -178,8 +178,8 @@ def convert_wav_to_mp3(
             "  • Windows: https://ffmpeg.org/download.html"
         )
 
-    if not wav_path.exists():
-        return False, f"Source file not found: {wav_path}"
+    if not source_path.exists():
+        return False, f"Source file not found: {source_path}"
 
     if mp3_path.exists():
         return False, f"Output file already exists: {mp3_path}"
@@ -188,7 +188,7 @@ def convert_wav_to_mp3(
         result = subprocess.run(
             [
                 "ffmpeg",
-                "-i", str(wav_path),
+                "-i", str(source_path),
                 "-codec:a", "libmp3lame",
                 "-q:a", str(quality),
                 "-ar", str(sample_rate),
@@ -202,13 +202,13 @@ def convert_wav_to_mp3(
         )
 
         if result.returncode == 0 and mp3_path.exists():
-            wav_mb = wav_path.stat().st_size / (1024 * 1024)
+            source_mb = source_path.stat().st_size / (1024 * 1024)
             mp3_mb = mp3_path.stat().st_size / (1024 * 1024)
             return True, (
                 f"✅ Conversion successful!\n\n"
                 f"Created: {mp3_path.name}\n"
                 f"Location: {mp3_path.parent}\n\n"
-                f"WAV: {wav_mb:.1f} MB  →  MP3: {mp3_mb:.1f} MB"
+                f"Source: {source_mb:.1f} MB  →  MP3: {mp3_mb:.1f} MB"
             )
 
         error_msg = result.stderr.strip() if result.stderr else "Unknown ffmpeg error"
@@ -388,7 +388,7 @@ def main(page: ft.Page):
     )
     page.overlay.append(pick_file_dialog)
 
-    # WAV-to-MP3 conversion progress dialog
+    # Audio-to-MP3 conversion progress dialog
     _conv_status_text = ft.Text(
         "Starting conversion…",
         size=13,
@@ -397,7 +397,7 @@ def main(page: ft.Page):
     _conv_progress = ft.ProgressBar(width=420)
     conversion_dialog = ft.AlertDialog(
         modal=True,
-        title=ft.Text("Converting WAV to MP3"),
+        title=ft.Text("Converting Audio to MP3"),
         content=ft.Container(
             content=ft.Column(
                 [
@@ -1216,13 +1216,13 @@ def main(page: ft.Page):
         update_status(f"Function 0: Select files to merge from {current_directory.name}")
 
     def on_function_1_wav_to_mp3(e):
-        """Execute Function 1: WAV to MP3 Conversion"""
+        """Execute Function 1: WAV/M4A to MP3 Conversion."""
         import threading
         nonlocal selected_file, output_directory, current_epoch
 
         if not check_ffmpeg():
             update_status(
-                "⚠️  ffmpeg not found — install it before converting WAV files.",
+                "⚠️  ffmpeg not found — install it before converting audio files.",
                 is_error=True,
             )
             add_log_message(
@@ -1249,19 +1249,22 @@ def main(page: ft.Page):
             add_log_message("Epoch timestamp missing. Reselect the file to regenerate it.")
             return
 
-        # Only convert WAV files
-        if selected_file.suffix.lower() != ".wav":
+        source_suffix = selected_file.suffix.lower()
+        supported_input_suffixes = {".wav", ".m4a"}
+
+        # Only convert WAV or M4A files
+        if source_suffix not in supported_input_suffixes:
             update_status(
-                f"Cannot convert {selected_file.suffix} file. Please select a WAV file.",
+                f"Cannot convert {selected_file.suffix} file. Please select a WAV or M4A file.",
                 is_error=True,
             )
-            add_log_message(f"Skipped: {selected_file.name} is not a WAV file")
+            add_log_message(f"Skipped: {selected_file.name} is not a supported Function 1 source file")
             return
 
         # Define standardized filenames using epoch
-        wav_filename = sanitize_filename(f"dg_{current_epoch}.wav")
+        source_filename = sanitize_filename(f"dg_{current_epoch}{source_suffix}")
         mp3_filename = sanitize_filename(f"dg_{current_epoch}.mp3")
-        wav_copy_path = output_directory / wav_filename
+        source_copy_path = output_directory / source_filename
         mp3_path = output_directory / mp3_filename
 
         # Quick pre-checks that don't require I/O can stay here
@@ -1285,34 +1288,34 @@ def main(page: ft.Page):
         page.update()
 
         def _run_copy_and_convert():
-            # --- Phase 1: copy WAV ---
-            if wav_copy_path.exists():
-                add_log_message(f"WAV file already exists in output directory: {wav_filename}")
+            # --- Phase 1: copy source audio ---
+            if source_copy_path.exists():
+                add_log_message(f"Source audio already exists in output directory: {source_filename}")
             else:
                 try:
-                    add_log_message(f"Copying WAV file to output directory: {wav_filename}")
-                    shutil.copy2(selected_file, wav_copy_path)
-                    wav_size_mb = wav_copy_path.stat().st_size / (1024 * 1024)
-                    add_log_message(f"✅ WAV file copied: {wav_filename} ({wav_size_mb:.1f} MB)")
+                    add_log_message(f"Copying source audio to output directory: {source_filename}")
+                    shutil.copy2(selected_file, source_copy_path)
+                    source_size_mb = source_copy_path.stat().st_size / (1024 * 1024)
+                    add_log_message(f"✅ Source audio copied: {source_filename} ({source_size_mb:.1f} MB)")
                 except Exception as ex:
                     conversion_dialog.open = False
-                    update_status(f"Error copying WAV file: {str(ex)}", is_error=True)
-                    add_log_message(f"❌ Failed to copy WAV file: {str(ex)}")
-                    logger.error(f"WAV copy failed: {str(ex)}")
+                    update_status(f"Error copying source audio file: {str(ex)}", is_error=True)
+                    add_log_message(f"❌ Failed to copy source audio file: {str(ex)}")
+                    logger.error(f"Source audio copy failed: {str(ex)}")
                     page.update()
                     return
 
             # --- Phase 2: convert to MP3 ---
-            wav_mb = wav_copy_path.stat().st_size / (1024 * 1024)
+            source_mb = source_copy_path.stat().st_size / (1024 * 1024)
             _conv_status_text.value = (
-                f"Step 2 of 2: Converting {wav_filename} ({wav_mb:.1f} MB) → {mp3_filename}…\n"
+                f"Step 2 of 2: Converting {source_filename} ({source_mb:.1f} MB) → {mp3_filename}…\n"
                 f"Large files may take several minutes. Do not close the app."
             )
-            add_log_message(f"Starting conversion: {wav_filename} → {mp3_filename}")
-            update_status(f"Converting {wav_filename} to MP3 — please wait…")
+            add_log_message(f"Starting conversion: {source_filename} → {mp3_filename}")
+            update_status(f"Converting {source_filename} to MP3 — please wait…")
             page.update()
 
-            success, message = convert_wav_to_mp3(wav_copy_path, mp3_path)
+            success, message = convert_audio_to_mp3(source_copy_path, mp3_path)
             conversion_dialog.open = False
             if success:
                 _conv_status_text.value = "Done"
@@ -1360,7 +1363,7 @@ def main(page: ft.Page):
             audio_to_transcribe = selected_file
         
         if not audio_to_transcribe:
-            update_status("⚠️  No audio file available. Use Function 1 to convert WAV to MP3 first, or select a supported audio file.", is_error=True)
+            update_status("⚠️  No audio file available. Use Function 1 to create a standardized MP3 first, or select a supported audio file.", is_error=True)
             add_log_message("No supported audio file found for transcription")
             return
 
@@ -1696,24 +1699,48 @@ def main(page: ft.Page):
                         add_log_message(f"  Para {paragraph_count}: {p.text[:100]}")
             add_log_message(f"  Total non-empty paragraphs: {paragraph_count}")
             
-            # Extract text and parse timestamps/speakers
-            # Word transcription format: timestamp and speaker on one line, text on next line(s)
-            # Format: "00:00:00 Speaker Name"
+            # Extract text and parse timestamps/speakers.
+            # OHM must handle both Word-export variants seen in practice:
+            #   1. "00:00:00 Speaker Name"
+            #   2. "Speaker Name (00:01):"
             segments = []
             current_speaker = "SPEAKER_00"
             current_timestamp = None
             current_text = []
             
-            # Regex pattern for Word's timestamp format: HH:MM:SS Speaker
-            timestamp_speaker_pattern = re.compile(r'^(\d{1,2}):(\d{2}):(\d{2})\s+(.+)$')
+            timestamp_first_pattern = re.compile(r'^(\d{1,2}):(\d{2}):(\d{2})\s+(.+)$')
+            speaker_first_pattern = re.compile(r'^(.+?)\s+\((\d{1,2}):(\d{2})(?::(\d{2}))?\):$')
+
+            def parse_docx_speaker_timestamp(text: str) -> tuple[int, str] | None:
+                """Parse a DOCX transcript header line into (seconds, speaker)."""
+                match = timestamp_first_pattern.match(text)
+                if match:
+                    hours, minutes, seconds, docx_speaker = match.groups()
+                    timestamp = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
+                    return timestamp, docx_speaker.strip()
+
+                match = speaker_first_pattern.match(text)
+                if match:
+                    docx_speaker, first, second, third = match.groups()
+                    if third is None:
+                        hours = 0
+                        minutes = int(first)
+                        seconds = int(second)
+                    else:
+                        hours = int(first)
+                        minutes = int(second)
+                        seconds = int(third)
+                    timestamp = hours * 3600 + minutes * 60 + seconds
+                    return timestamp, docx_speaker.strip()
+
+                return None
             
             paragraphs = [p.text.strip() for p in doc.paragraphs if p.text.strip()]
             
             for i, text in enumerate(paragraphs):
-                # Check if this line is a timestamp + speaker line
-                match = timestamp_speaker_pattern.match(text)
-                
-                if match:
+                parsed_header = parse_docx_speaker_timestamp(text)
+
+                if parsed_header:
                     # Save previous segment if we have collected text
                     if current_timestamp is not None and current_text:
                         # Calculate end time (use next timestamp or add 3 seconds)
@@ -1727,12 +1754,7 @@ def main(page: ft.Page):
                         })
                     
                     # Start new segment
-                    hours, minutes, seconds, docx_speaker = match.groups()
-                    current_timestamp = int(hours) * 3600 + int(minutes) * 60 + int(seconds)
-                    
-                    # Use DOCX speaker name as-is
-                    docx_speaker = docx_speaker.strip()
-                    current_speaker = docx_speaker
+                    current_timestamp, current_speaker = parsed_header
                     current_text = []
                 else:
                     # This is text content, add to current segment
@@ -1751,6 +1773,12 @@ def main(page: ft.Page):
             # Update end times based on next segment's start time
             for i in range(len(segments) - 1):
                 segments[i]["end"] = segments[i + 1]["start"]
+
+            if not segments:
+                return False, (
+                    "Conversion failed: no transcript segments were found in the DOCX. "
+                    "Expected either '00:00:00 Speaker Name' or 'Speaker Name (00:01):' headings."
+                )
             
             # Create JSON transcript
             notes = build_provenance_notes(
@@ -1789,6 +1817,86 @@ def main(page: ft.Page):
             
         except Exception as e:
             return False, f"Conversion failed: {str(e)}"
+
+    def find_transcript_docx_in_output_dir(out_dir: Path, base_name: str | None, selected_path: Path | None = None) -> Path | None:
+        """Locate the most likely DOCX transcript file in an OHM output directory."""
+        candidates: list[Path] = []
+        seen: set[Path] = set()
+
+        def add_candidate(path: Path | None):
+            if not path:
+                return
+            if path in seen:
+                return
+            seen.add(path)
+            candidates.append(path)
+
+        if base_name:
+            add_candidate(out_dir / sanitize_filename(f"{base_name}.docx"))
+
+        if selected_path and selected_path.suffix.lower() == ".docx":
+            add_candidate(selected_path)
+            add_candidate(out_dir / selected_path.name)
+
+        if selected_path:
+            add_candidate(out_dir / sanitize_filename(f"{selected_path.stem}.docx"))
+
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+
+        docx_files = sorted(
+            [
+                path for path in out_dir.iterdir()
+                if path.is_file() and path.suffix.lower() == ".docx" and not path.name.startswith("~$")
+            ],
+            key=lambda path: path.name.lower(),
+        )
+        if docx_files:
+            return docx_files[0]
+
+        return None
+
+    def find_source_audio_in_output_dir(out_dir: Path, base_name: str | None, selected_path: Path | None = None) -> Path | None:
+        """Locate the most likely audio source for provenance metadata."""
+        candidates: list[Path] = []
+        seen: set[Path] = set()
+
+        def add_candidate(path: Path | None):
+            if not path:
+                return
+            if path in seen:
+                return
+            seen.add(path)
+            candidates.append(path)
+
+        if base_name:
+            for ext in AUDIO_EXTENSIONS:
+                add_candidate(out_dir / sanitize_filename(f"{base_name}{ext}"))
+
+        if selected_path and selected_path.suffix.lower() in AUDIO_EXTENSIONS:
+            add_candidate(selected_path)
+            add_candidate(out_dir / selected_path.name)
+
+        if selected_path:
+            for ext in AUDIO_EXTENSIONS:
+                add_candidate(out_dir / sanitize_filename(f"{selected_path.stem}{ext}"))
+
+        for candidate in candidates:
+            if candidate.exists() and candidate.is_file():
+                return candidate
+
+        discovered_audio = sorted(
+            [
+                path for path in out_dir.iterdir()
+                if path.is_file() and path.suffix.lower() in AUDIO_EXTENSIONS
+            ],
+            key=lambda path: path.name.lower(),
+        )
+        if discovered_audio:
+            return discovered_audio[0]
+
+        return None
 
     def generate_pdf_from_json(json_path, pdf_path, segments):
         """Generate a formatted PDF from JSON transcript segments."""
@@ -1942,6 +2050,45 @@ def main(page: ft.Page):
     def on_function_4_generate_outputs(e):
         """Generate TXT, VTT, CSV, and PDF outputs from edited JSON transcript."""
         nonlocal selected_file, output_directory, current_epoch
+
+        def rebuild_json_from_docx(reason: str) -> bool:
+            """Rebuild transcript JSON from a DOCX in the output directory."""
+            docx_path = find_transcript_docx_in_output_dir(output_directory, base_name, selected_file)
+            if not docx_path:
+                update_status(
+                    f"⚠️  Transcript JSON {reason}, and no DOCX transcript was found to rebuild it.",
+                    is_error=True,
+                )
+                add_log_message(f"Error: {json_path.name} {reason} in {output_directory.name}")
+                add_log_message("Looked for a transcript DOCX in the same output directory but found none.")
+                return False
+
+            source_audio = find_source_audio_in_output_dir(output_directory, base_name, selected_file)
+            selected_source = selected_file if selected_file and selected_file.suffix.lower() in AUDIO_EXTENSIONS else (source_audio or selected_file)
+
+            update_status(f"Transcript JSON {reason}. Rebuilding it from the DOCX transcript...")
+            add_log_message(f"Transcript JSON {reason}: {json_path.name}")
+            add_log_message(f"Found transcript DOCX: {docx_path.name}")
+            if source_audio:
+                add_log_message(f"Using audio provenance source: {source_audio.name}")
+            else:
+                add_log_message("No audio file found for provenance metadata; continuing with DOCX-only details.")
+
+            success, message = convert_docx_to_json(
+                docx_path,
+                json_path,
+                source_audio=source_audio,
+                selected_source=selected_source,
+                out_dir=output_directory,
+            )
+            if not success or not json_path.exists():
+                update_status(f"❌ {message}", is_error=True)
+                add_log_message(f"❌ {message}")
+                return False
+
+            add_log_message(f"✅ {message}")
+            add_log_message(f"✅ Rebuilt transcript JSON from {docx_path.name}")
+            return True
         
         if not selected_file:
             update_status("No file selected. Please select a file first.", is_error=True)
@@ -1968,12 +2115,8 @@ def main(page: ft.Page):
         
         # Check if JSON exists
         if not json_path.exists():
-            update_status(
-                f"⚠️  Transcript JSON not found. Run Function 2 first.",
-                is_error=True,
-            )
-            add_log_message(f"Error: {json_path.name} not found in {output_directory.name}")
-            return
+            if not rebuild_json_from_docx("missing"):
+                return
 
         storage.record_function_usage("function_4_generate_outputs")
         update_status("Generating TXT, VTT, CSV, and PDF outputs from JSON...")
@@ -1989,9 +2132,20 @@ def main(page: ft.Page):
             language = data.get("language", "unknown")
             
             if not segments:
-                update_status("⚠️  No segments found in JSON. Cannot generate outputs.", is_error=True)
-                add_log_message("Error: JSON contains no segments")
-                return
+                if not rebuild_json_from_docx("contains no segments"):
+                    update_status("⚠️  No segments found in JSON. Cannot generate outputs.", is_error=True)
+                    add_log_message("Error: JSON contains no segments")
+                    return
+
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                segments = data.get("segments", [])
+                language = data.get("language", "unknown")
+
+                if not segments:
+                    update_status("⚠️  No segments found in JSON. Cannot generate outputs.", is_error=True)
+                    add_log_message("Error: JSON contains no segments after DOCX rebuild")
+                    return
             
             # Generate TXT output with speaker labels
             add_log_message("Generating TXT output...")
@@ -2260,7 +2414,7 @@ This report tracks the processing status of audio files from the input directory
                     file_info = input_files[name]
                     report_content += f"**{name}{file_info['format']}**  \n"
                     report_content += f"- Status: Source file only\n"
-                    report_content += f"- Next: Run Function 1 (if WAV) or Function 2 (if MP3)\n\n"
+                    report_content += f"- Next: Run Function 1 (if WAV/M4A and you want a standardized MP3) or Function 2\n\n"
             
             report_content += f"""---
 
@@ -2268,7 +2422,7 @@ This report tracks the processing status of audio files from the input directory
 
 For each audio file:
 
-1. **(If WAV) Function 1: Convert WAV to MP3**
+1. **(If WAV or M4A) Function 1: Convert to MP3**
 2. **Function 2: Transcribe** (MS Word Online mode)
 3. **Edit JSON** (fix speaker names, correct text)
 4. **Function 4: Generate TXT, VTT, CSV & PDF** from edited JSON
@@ -2465,7 +2619,7 @@ For each audio file:
             "help_file": "FUNCTION_0_MERGE_AUDIO.md"
         },
         "function_1_wav_to_mp3": {
-            "label": "1: Convert WAV to MP3",
+            "label": "1: Convert WAV/M4A to MP3",
             "icon": "🎵",
             "handler": on_function_1_wav_to_mp3,
             "help_file": "FUNCTION_1_WAV_TO_MP3.md"
@@ -2914,7 +3068,7 @@ For each audio file:
                         "Rescan",
                         icon=ft.Icons.REFRESH,
                         on_click=lambda e: _scan_audio_files(),
-                        tooltip="Re-scan the input directory for WAV/MP3 files",
+                        tooltip="Re-scan the input directory for recognized audio files",
                     ),
                 ],
                 spacing=10,

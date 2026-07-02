@@ -4,27 +4,29 @@
 Generate final output files (TXT, VTT, CSV, and PDF) from the edited JSON transcript created by Function 2. This allows you to perfect the transcript—fixing speaker names, correcting transcription errors, and adjusting content—before creating the final deliverable files.
 
 ## Requirements
-- **Prerequisite**: Function 2 must have been run to create the initial JSON transcript
-- **JSON file**: `dg_<epoch>_transcript.json` must exist in the output directory
-- **Edited content**: You should have edited the JSON to fix speaker names, spelling, etc.
+- **Preferred workflow**: Function 2 creates the initial JSON transcript
+- **Fallback workflow**: If the JSON is missing or contains no transcript segments, but a timestamped transcription DOCX is already present in the same output directory, Function 4 can now rebuild the JSON automatically and continue.
+- **Edited content**: You can still edit the JSON to fix speaker names, spelling, etc. before re-running Function 4.
 
 ## Usage
 
-1. **First, run Function 2** to create the initial JSON transcript
-2. **Edit the JSON file** located in `~/OHM-data/<sanitized-basename>--dg_<epoch>/dg_<epoch>_transcript.json`:
+1. **Preferred**: Run Function 2 to create the initial JSON transcript.
+2. **Alternative**: If you already have a timestamped DOCX transcript in the output directory, skip Function 2 and let Function 4 rebuild the missing or empty JSON automatically.
+3. **Edit the JSON file** located in `~/OHM-data/<sanitized-basename>--dg_<epoch>/dg_<epoch>_transcript.json`:
    - Change speaker labels (e.g., `"speaker": "SPEAKER_00"` → `"speaker": "John Doe"`)
    - Fix transcription errors in the `"text"` fields
    - Correct spelling and punctuation
    - Adjust timestamps if necessary
-3. **Save the edited JSON** (maintain proper JSON format)
-4. In the **Active Functions** dropdown, select **"📄 4: Generate TXT, VTT, CSV & PDF from JSON"**
-5. The function will:
+4. **Save the edited JSON** (maintain proper JSON format)
+5. In the **Active Functions** dropdown, select **"📄 4: Generate TXT, VTT, CSV & PDF from JSON"**
+6. The function will:
    - Read your edited JSON file
+  - Or, if the JSON is missing or empty, locate a DOCX transcript in the same directory and build the JSON first
    - Generate a formatted TXT file with speaker labels
    - Generate a VTT subtitle file with speaker tags
    - Generate a CSV file with timestamp, speaker, and words columns
    - Generate a formatted PDF with timestamps and speaker labels
-6. Monitor the status and log output for progress
+7. Monitor the status and log output for progress
 
 ## Output Directory
 
@@ -37,7 +39,7 @@ Files are generated in the same output directory as other processing:
 For example:
 ```
 ~/OHM-data/interview_john_doe--dg_1712345678/
-  ├── dg_1712345678.wav                  (from Function 1)
+  ├── dg_1712345678.wav or .m4a          (preserved source copy from Function 1)
   ├── dg_1712345678.mp3                  (from Function 1)
   ├── dg_1712345678_transcript.json      (from Function 2, YOU EDIT THIS)
   ├── dg_1712345678.txt                  (from Function 4)
@@ -172,9 +174,14 @@ Here's what the JSON structure looks like (simplified):
 ## Common Issues
 
 ### "Transcript JSON not found"
-- Run Function 2 first to create the initial JSON
-- Make sure you're using the same file selection
-- Check that the JSON exists in the output directory
+- Function 4 now tries to rebuild the JSON from a DOCX transcript in the same output directory.
+- If that still fails, make sure the DOCX file is present and timestamped in Word's transcript format.
+- Make sure you're using the same file selection/output directory.
+- If there is no DOCX file, run Function 2 first to create the initial JSON.
+
+### "No segments found in JSON"
+- Function 4 now treats this as a rebuild case and will try the DOCX transcript again.
+- This commonly happens when an earlier DOCX conversion created an empty JSON because the transcript used a different heading format.
 
 ### "No segments found in JSON"
 - JSON file may be corrupted or empty
@@ -224,10 +231,18 @@ Here's what the JSON structure looks like (simplified):
 ## Workflow Summary
 
 ```
+Preferred:
 Function 2: Audio → JSON transcript (with provenance notes)
-   ↓
+  ↓
 [YOU EDIT JSON]
-   ↓
+  ↓
+Function 4: JSON → TXT + VTT + CSV + PDF (final outputs)
+
+Fallback:
+Existing DOCX transcript in output directory → Function 4 rebuilds JSON
+  ↓
+[OPTIONAL: YOU EDIT JSON]
+  ↓
 Function 4: JSON → TXT + VTT + CSV + PDF (final outputs)
 ```
 

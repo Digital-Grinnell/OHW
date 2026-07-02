@@ -18,7 +18,7 @@ Use this function when a recording was split across multiple files that represen
 
 1. Select the input directory in the **Inputs** section (the directory containing your audio files).
 2. Select **Function 0: Merge Audio Files** from the Active Functions dropdown.
-3. A dialog opens showing all WAV and MP3 files found in that directory.
+3. A dialog opens showing all recognized audio files found in that directory.
 4. Click **Add →** next to each file you want to merge, in the order they should be joined (top of the Merge Order list = start of the combined recording).
 5. Use the **↑ ↓** arrows to reorder files in the Merge Order list if needed.
 6. Review and optionally edit the **Output Filename** (auto-filled from the common prefix of selected files).
@@ -66,7 +66,7 @@ For best results, merge files of the same format.
 
 The merged file is placed **in the same directory as the source files** (the current input directory). It is **not** copied to an OHM-data output directory — it is a source-level merge intended to produce a single clean file to feed into the rest of the workflow.
 
-After merging, click **List WAV and MP3 Files** to refresh the file list, then select the merged file and run Function 1 (if WAV) or Function 2 (to transcribe).
+After merging, click **Rescan** to refresh the file list, then select the merged file and run Function 1 if you want a standardized MP3, or Function 2 to transcribe directly.
 
 ## Source File Archiving
 
@@ -84,7 +84,7 @@ Immediately after the merged file is created, all source files that were selecte
 - The `Merged/` subdirectory is created automatically if it does not already exist.
 - If a file with the same name already exists in `Merged/`, a numeric suffix (`_1`, `_2`, …) is appended to the destination name to avoid overwriting.
 - Source files are moved, not copied — the originals are no longer in the input directory after a successful merge.
-- The `Merged/` subdirectory is **excluded** from all audio file listings (the **List WAV and MP3 Files** button) and from the **Function 5 workflow statistics**, so archived originals are never double-counted.
+- The `Merged/` subdirectory is **excluded** from all audio file listings (via **Rescan**) and from the **Function 5 workflow statistics**, so archived originals are never double-counted.
 - If the move fails for any file (e.g. permission error), the failure is logged but the merge output is still kept.
 
 ## Merge Provenance (Sidecar File)
@@ -131,4 +131,4 @@ This means the provenance of every merged recording is preserved all the way thr
 - Source files are **moved** (not deleted) into the `Merged/` subdirectory after a successful merge.
 - Merging large files may take a minute; a status message is shown while ffmpeg runs.
 - The `.merge_info.json` sidecar is written next to the merged output file and remains in the input directory (not moved to `Merged/`).
-- Any `Merged/` subdirectory is ignored by **List WAV and MP3 Files** and **Function 5 Report Progress** so archived originals never appear in file counts or statistics.
+- Any `Merged/` subdirectory is ignored by **Rescan** and **Function 5 Report Progress** so archived originals never appear in file counts or statistics.

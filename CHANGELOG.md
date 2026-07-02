@@ -7,6 +7,12 @@ and this project uses date-based versioning (YYYY-MM-DD).
 
 ---
 
+## [2026-07-02]
+
+### Changed
+- **Function 1 now accepts M4A input**: Function 1 can now preserve either WAV or M4A as the standardized source copy in the output directory and create `dg_<epoch>.mp3` directly from that source. OHM no longer implies that every workflow begins with WAV-only conversion. ([#app.py](app.py), [#FUNCTION_1_WAV_TO_MP3.md](FUNCTION_1_WAV_TO_MP3.md))
+- **UI and documentation updated for source-format flexibility**: Help files, README workflow text, and UI strings now describe Function 1 as a WAV/M4A-to-MP3 step and avoid implying that synthetic WAV files should be created from lossy M4A sources. ([#README.md](README.md), [#FUNCTION_0_MERGE_AUDIO.md](FUNCTION_0_MERGE_AUDIO.md), [#FUNCTION_2_MS_WORD_ONLINE.md](FUNCTION_2_MS_WORD_ONLINE.md), [#FUNCTION_4_GENERATE_OUTPUTS.md](FUNCTION_4_GENERATE_OUTPUTS.md), [#FUNCTION_5_REPORT_PROGRESS.md](FUNCTION_5_REPORT_PROGRESS.md), [#app.py](app.py))
+
 ## [2026-05-04]
 
 ### Removed
@@ -230,7 +236,7 @@ Significant documentation improvements:
 The foundational OHM application included:
 
 #### Core Functions
-- **Function 1: Convert WAV to MP3** - High-quality audio conversion using FFmpeg
+- **Function 1: Convert WAV/M4A to MP3** - High-quality audio conversion using FFmpeg
 - **Function 2: Transcribe with MS Word Online** - Manual transcription workflow with instructions
 - **Function 4: Generate TXT, VTT, CSV & PDF from JSON** - Multi-format output generation
 

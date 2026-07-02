@@ -12,10 +12,10 @@ OHM is a desktop application built with Flet that streamlines the creation and p
 - Creates merge provenance JSON sidecar file
 - Requires FFmpeg
 
-### Function 1: Convert WAV to MP3
-- Converts large WAV audio files to compressed MP3 format
+### Function 1: Convert WAV or M4A to MP3
+- Converts WAV or M4A audio files to standardized MP3 format
 - Uses FFmpeg for high-quality conversion
-- Preserves audio quality while reducing file size
+- Preserves the original source format in the output directory
 - Required for files that need to be uploaded to transcription services
 
 ### Function 2: Transcribe with MS Word Online
@@ -107,7 +107,7 @@ See [Distribution & DMG](#distribution--dmg) below for pre-built installer instr
 ### System Requirements
 - **macOS** (primary platform)
 - **Python 3.8+**
-- **FFmpeg** (for WAV to MP3 conversion)
+- **FFmpeg** (for audio-to-MP3 conversion)
   ```bash
   brew install ffmpeg
   ```
@@ -132,8 +132,8 @@ All dependencies are installed automatically by `run.sh`:
    - The merged file becomes your new source file
 
 1. **Select Input Directory**
-   - Browse to folder containing WAV or MP3 audio files
-   - Click "List WAV and MP3 Files" to scan
+   - Browse to folder containing supported audio files
+   - Click "Rescan" to scan for recognized audio files
    - Select an audio file from the dropdown
 
 1a. **Set Working/Output Directory** (optional)
@@ -143,9 +143,9 @@ All dependencies are installed automatically by `run.sh`:
    - The setting persists across sessions
 
 2. **Convert Audio** (if needed)
-   - If you have WAV files, run **Function 1** to convert to MP3
+   - If you have WAV or M4A files, run **Function 1** to create a standardized MP3
    - MP3s are required for cloud transcription services
-   - Skip this step if you already have MP3 files
+   - Skip this step if you already have an MP3 you want to use directly
 
 3. **Choose Transcription Method**
    - Use **Function 2** for MS Word Online transcription
@@ -184,7 +184,7 @@ All processed files are organized inside an `OHM-data` subfolder within the **Wo
 ```
 <working_dir>/OHM-data/
 ├── <sanitized-basename>--dg_<epoch>/
-│   ├── dg_<epoch>.wav          # Original or converted audio
+│   ├── dg_<epoch>.wav|m4a      # Preserved source copy from Function 1
 │   ├── dg_<epoch>.mp3          # Compressed audio
 │   ├── dg_<epoch>_transcript.json  # Editable transcript
 │   ├── dg_<epoch>.txt          # Plain text output
@@ -297,7 +297,7 @@ brew install ffmpeg
 ### MS Word Transcription Issues
 - Ensure you have an active Microsoft 365 subscription
 - Word Online transcription requires < 200MB audio files
-- Use Function 1 to convert/compress large files first
+- Use Function 1 to convert/compress large WAV or M4A files first
 - Microsoft imposes a **300-minute-per-month** transcription limit; if exceeded, the Transcribe pane will be unavailable until the limit resets
 
 ### PDF Generation Fails

@@ -7,7 +7,7 @@ Provide step-by-step instructions for manual transcription using Microsoft Word 
 
 ## Requirements
 - **Microsoft 365 subscription** - Required for Word Online transcription feature
-- **MP3 or WAV file** - Select an MP3 or WAV file. If a WAV is selected, the app will automatically locate the converted MP3 in the output directory.
+- **Supported audio file** - Select an MP3, WAV, M4A, or MP4 file. Function 2 uses a standardized MP3 in the output directory when one exists; otherwise it can transcribe the selected supported source directly.
 - **Internet connection** - Transcription happens in the cloud
 - **Modern web browser** - Chrome, Firefox, Safari, or Edge
 
@@ -21,8 +21,8 @@ Use MS Word Online transcription when:
 ## Usage
 
 1. In the **Inputs** section, click **Browse...** to select a directory containing your audio files
-3. Click **List WAV and MP3 Files** to scan the directory and all subdirectories
-4. From the **Select Audio File** dropdown, choose the MP3 file you want to transcribe
+3. Click **Rescan** to scan the directory and all subdirectories for recognized audio files
+4. From the **Select Audio File** dropdown, choose the audio file you want to transcribe
 5. **(Optional)** Enter names in the **Individuals** panel
    - **Interviewer** — defaults to "Interviewer" if left blank
    - **Speaker 1–4** — the oral history subject(s)
@@ -162,7 +162,7 @@ The Function 2 dialog includes a built-in **Review Notes** tab so you can record
 **Problem**: Audio file won't upload to Word Online  
 **Solution**:
 - Check file size - Word Online has upload limits
-- Ensure file is MP3 format
+- If upload issues occur, try creating a standardized MP3 with Function 1 first
 - Check your internet connection
 - Try refreshing the page
 
