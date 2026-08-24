@@ -2258,11 +2258,19 @@ def main(page: ft.Page):
         try:
             # Scan input directory for audio files, excluding any Merged/ subdirectories
             input_files = {}
+            ohm_data_root = output_base_dir.resolve()
             for file_path in current_directory.rglob("*"):
+                file_parent = file_path.parent.resolve()
+                is_generated_dg_audio = (
+                    file_path.stem.startswith("dg_")
+                    and file_parent != ohm_data_root
+                    and file_parent.is_relative_to(ohm_data_root)
+                )
                 if (
                     file_path.is_file()
                     and file_path.suffix.lower() in AUDIO_EXTENSIONS
                     and "Merged" not in file_path.relative_to(current_directory).parts
+                    and not is_generated_dg_audio
                 ):
                     stem = file_path.stem
                     if stem not in input_files:
